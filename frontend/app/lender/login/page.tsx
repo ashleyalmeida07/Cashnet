@@ -1,68 +1,108 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useSignMessage } from 'wagmi';
 import { useUIStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { useSimulationStore } from '@/store/simulationStore';
 
 export default function LenderLoginPage() {
   const router = useRouter();
-  const login = useAuthStore((s) => s.login);
-  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
-  const addToast = useUIStore((s) => s.addToast);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const addToast = useUIStore((state) => state.addToast);
+  const loginWithWallet = useAuthStore((state) => state.loginWithWallet);
+  const setUserId = useSimulationStore((state) => state.setUserId);
 
-  const validate = () => {
-    const e: typeof errors = {};
-    if (!email) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Invalid email';
-    if (!password) e.password = 'Password is required';
-    return e;
-  };
+  const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validate();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    setLoading(true);
-    try {
-      await login(email, password);
-      const store = useAuthStore.getState();
-      if (store.user) {
-        store.setUser({ ...store.user, role: 'LENDER' });
-      }
-      addToast({ message: 'Welcome back, Lender', severity: 'success' });
-      router.push('/lender');
-    } catch {
-      addToast({ message: 'Login failed. Please try again.', severity: 'error' });
-      setLoading(false);
+  // Handle wallet connection and authentication
+  const handleAuthenticate = async () => {
+    if (!address || !isConnected) {
+      addToast({
+        message: 'Please connect your wallet first',
+        severity: 'warning',
+      });
+      return;
     }
-  };
 
-  const handleGoogle = async () => {
-    setLoading(true);
     try {
-      await loginWithGoogle('LENDER');
-      addToast({ message: 'Welcome, Lender', severity: 'success' });
-      router.push('/lender');
-    } catch {
-      addToast({ message: 'Google authentication failed', severity: 'error' });
-      setLoading(false);
+      console.log('[LENDER AUTH] Starting authentication for wallet:', address);
+      
+      // Get nonce from backend
+      const nonceResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/nonce`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: address }),
+      });
+
+      console.log('[LENDER AUTH] Nonce response status:', nonceResponse.status);
+
+      if (!nonceResponse.ok) {
+        const errorText = await nonceResponse.text();
+        console.error('[LENDER AUTH] Nonce error:', errorText);
+        throw new Error('Failed to get authentication nonce');
+      }
+
+      const nonceData = await nonceResponse.json();
+      console.log('[LENDER AUTH] Nonce data received:', nonceData);
+      const { message } = nonceData;
+
+      // Request signature from user
+      console.log('[LENDER AUTH] Requesting signature for message:', message);
+      const signature = await signMessageAsync({ message });
+      console.log('[LENDER AUTH] Signature received:', signature);
+
+      // Authenticate with backend
+      console.log('[LENDER AUTH] Calling loginWithWallet...');
+      await loginWithWallet(address, signature);
+      console.log('[LENDER AUTH] loginWithWallet completed');
+
+      // Get updated user state after authentication
+      const authState = useAuthStore.getState();
+      console.log('[LENDER AUTH] Auth state after login:', {
+        isAuthenticated: authState.isAuthenticated,
+        hasUser: !!authState.user,
+        hasToken: !!authState.token,
+        user: authState.user,
+      });
+      
+      if (authState.isAuthenticated && authState.user) {
+        // Update user role to LENDER
+        authState.setUser({ ...authState.user, role: 'LENDER' });
+        setUserId(authState.user.id);
+        addToast({
+          message: `Welcome, Lender!`,
+          severity: 'success',
+        });
+        console.log('[LENDER AUTH] Redirecting to lender dashboard...');
+        setTimeout(() => {
+          router.push('/lender');
+        }, 100);
+      } else {
+        console.error('[LENDER AUTH] User state not updated properly:', authState);
+        throw new Error('Authentication succeeded but user state not updated');
+      }
+    } catch (error) {
+      console.error('[LENDER AUTH] Authentication error:', error);
+      addToast({
+        message: error instanceof Error ? error.message : 'Authentication failed',
+        severity: 'error',
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-[color:var(--color-bg-primary)] grid grid-cols-1 md:grid-cols-2">
+      {/* Left Panel - Branding */}
       <div className="hidden md:flex flex-col justify-between p-8 bg-[color:var(--color-bg-secondary)] border-r border-[color:var(--color-border)]">
         <Link href="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#b367ff] rounded flex items-center justify-center text-sm font-bold text-white">LN</div>
           <span className="font-mono text-lg font-bold text-text-primary">cashnet <span className="text-[#b367ff]">lender</span></span>
         </Link>
+
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="text-xs font-mono text-text-tertiary uppercase tracking-wider">Lender / Bank Portal</div>
@@ -77,9 +117,9 @@ export default function LenderLoginPage() {
             ))}
           </div>
           <div className="p-4 bg-[color:var(--color-bg-primary)] border border-[color:var(--color-border)] rounded text-xs font-mono space-y-1">
-            <div className="text-accent">→ pool status: active</div>
-            <div className="text-success">✓ TVL: $125,000,000</div>
-            <div className="text-[#b367ff]">◆ utilization: 68.4%</div>
+            <div className="text-accent">→ wallet authentication ready</div>
+            <div className="text-success">✓ signature verification enabled</div>
+            <div className="text-[#b367ff]">◆ TVL: $125,000,000</div>
           </div>
         </div>
         <div className="text-xs font-mono text-text-tertiary">
@@ -87,69 +127,170 @@ export default function LenderLoginPage() {
         </div>
       </div>
 
+      {/* Right Panel - Wallet Auth */}
       <div className="flex flex-col justify-center items-center p-8 md:p-12">
         <div className="w-full max-w-sm space-y-8">
-          <div className="space-y-2">
-            <div className="w-12 h-12 bg-[#b367ff] rounded-lg flex items-center justify-center text-lg font-bold text-white mx-auto">LN</div>
-            <h1 className="text-2xl font-bold font-mono text-text-primary text-center">Lender Sign In</h1>
-            <p className="text-sm text-text-secondary font-mono text-center">Access your institutional lending dashboard</p>
+          {/* Mobile Logo */}
+          <Link href="/" className="md:hidden flex items-center gap-2 justify-center mb-8">
+            <div className="w-10 h-10 bg-[#b367ff] rounded flex items-center justify-center text-sm font-bold text-white">LN</div>
+            <span className="font-mono text-lg font-bold text-text-primary">cashnet <span className="text-[#b367ff]">lender</span></span>
+          </Link>
+
+          {/* Heading */}
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold font-mono text-text-primary">
+              Lender Sign In
+            </h1>
+            <p className="text-text-secondary text-sm font-mono">
+              Connect your wallet to access your institutional dashboard
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">Institution Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="bank@institution.com"
-                className="w-full px-3 py-2.5 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-[#b367ff] transition-colors"
-              />
-              {errors.email && <p className="text-xs text-[#ff3860] font-mono mt-1">{errors.email}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3 py-2.5 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-[#b367ff] transition-colors"
-              />
-              {errors.password && <p className="text-xs text-[#ff3860] font-mono mt-1">{errors.password}</p>}
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[#b367ff] hover:bg-[#9f4ef0] text-white rounded font-mono text-sm font-semibold transition-colors disabled:opacity-60"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
+          {/* Wallet Connection */}
+          <div className="space-y-6">
+            <div className="flex flex-col items-center gap-4 p-8 border border-[color:var(--color-border)] rounded-lg bg-[color:var(--color-bg-secondary)]">
+              <div className="text-6xl mb-2">🦊</div>
+              <h3 className="text-lg font-bold font-mono text-text-primary">
+                MetaMask & Wallet Login
+              </h3>
+              <p className="text-text-secondary text-sm font-mono text-center">
+                Sign a message with MetaMask or any Web3 wallet. No gas fees required.
+              </p>
+              <div className="text-xs text-text-secondary font-mono mt-2 p-3 bg-[color:var(--color-bg-primary)] rounded border border-[color:var(--color-border)]">
+                💡 <strong>MetaMask users:</strong> Choose "Browser" for extension or "WalletConnect" for QR code (mobile)
+              </div>
+              
+              <div className="w-full mt-4">
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }: any) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus || authenticationStatus === 'authenticated');
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[color:var(--color-border)]" />
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          style: {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <button
+                                onClick={openConnectModal}
+                                type="button"
+                                className="w-full py-3 bg-[#b367ff] hover:bg-[#9f4ef0] text-white rounded font-mono text-sm font-semibold transition-colors"
+                              >
+                                Connect Wallet
+                              </button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <button
+                                onClick={openChainModal}
+                                type="button"
+                                className="w-full py-3 border border-[#ff3860] text-[#ff3860] rounded font-mono text-sm font-semibold hover:bg-[rgba(255,56,96,0.1)] transition-colors"
+                              >
+                                Wrong network
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div className="flex flex-col gap-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={openChainModal}
+                                  type="button"
+                                  className="flex-1 py-2 text-xs border border-[color:var(--color-border)] rounded font-mono text-text-secondary hover:text-text-primary hover:border-[#b367ff] transition-colors"
+                                >
+                                  {chain.hasIcon && (
+                                    <div
+                                      style={{
+                                        background: chain.iconBackground,
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: 999,
+                                        overflow: 'hidden',
+                                        marginRight: 4,
+                                        display: 'inline-block',
+                                      }}
+                                    >
+                                      {chain.iconUrl && (
+                                        <img
+                                          alt={chain.name ?? 'Chain icon'}
+                                          src={chain.iconUrl}
+                                          style={{ width: 12, height: 12 }}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                  {chain.name}
+                                </button>
+
+                                <button
+                                  onClick={openAccountModal}
+                                  type="button"
+                                  className="flex-1 py-2 text-xs border border-[color:var(--color-border)] rounded font-mono text-text-secondary hover:text-text-primary hover:border-[#b367ff] transition-colors"
+                                >
+                                  {account.displayName}
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={handleAuthenticate}
+                                type="button"
+                                className="w-full py-3 bg-[#b367ff] hover:bg-[#9f4ef0] text-white rounded font-mono text-sm font-semibold transition-colors"
+                              >
+                                Sign In with Wallet
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-[color:var(--color-bg-primary)] text-text-tertiary font-mono">or</span>
+
+            {/* Security Notice */}
+            <div className="bg-[rgba(179,103,255,0.05)] border border-[#b367ff] rounded-lg p-4">
+              <div className="flex gap-3">
+                <div className="text-[#b367ff] text-xl">🔒</div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold font-mono text-text-primary">
+                    Secure & Non-Custodial
+                  </h4>
+                  <ul className="text-xs text-text-secondary font-mono space-y-1">
+                    <li>• We never access your private keys</li>
+                    <li>• You approve all transactions in your wallet</li>
+                    <li>• Authentication is signature-based only</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
 
-          <button
-            onClick={handleGoogle}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white text-gray-800 rounded font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-60"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continue with Google
-          </button>
-
+          {/* Sign Up Link */}
           <div className="text-center text-xs font-mono text-text-tertiary">
             No account?{' '}
             <Link href="/lender/signup" className="text-[#b367ff] hover:underline">Register as Lender</Link>

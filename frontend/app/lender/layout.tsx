@@ -63,7 +63,9 @@ export default function LenderLayout({ children }: { children: React.ReactNode }
           ))}
         </nav>
         <div className="p-3 border-t border-[color:var(--color-border)]">
-          <div className="hidden md:block mb-2 text-xs font-mono text-text-tertiary truncate">{user.name}</div>
+          <div className="hidden md:block mb-2 text-xs font-mono text-text-tertiary truncate">
+            {user.name || user.email || (user.walletAddress ? `${user.walletAddress.slice(0, 10)}...` : 'Lender')}
+          </div>
           <button onClick={() => { logout(); router.push('/lender/login'); }} className="w-full py-2 text-xs font-mono text-[#b367ff] border border-[#b367ff] rounded hover:bg-[rgba(179,103,255,0.1)] transition-colors hidden md:block">
             Sign Out
           </button>
@@ -78,7 +80,9 @@ export default function LenderLayout({ children }: { children: React.ReactNode }
         </div>
         <div className="flex items-center gap-3">
           <span className="px-3 py-1 bg-[rgba(179,103,255,0.1)] border border-[#b367ff] text-[#b367ff] rounded text-xs font-mono">LENDER</span>
-          <div className="w-7 h-7 rounded-full bg-[#b367ff] flex items-center justify-center text-xs font-bold text-white">{user.name[0]}</div>
+          <div className="w-7 h-7 rounded-full bg-[#b367ff] flex items-center justify-center text-xs font-bold text-white">
+            {(user.name?.[0] || user.walletAddress?.[2] || 'L').toUpperCase()}
+          </div>
         </div>
       </header>
 
