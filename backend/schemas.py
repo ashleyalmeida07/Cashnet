@@ -164,3 +164,53 @@ class HealthFactorResponse(BaseModel):
     health_factor: float
     liquidation_threshold: float
     at_risk: bool
+
+
+# ============================================================================
+# BORROWER AUTH SCHEMAS
+# ============================================================================
+
+class NonceRequest(BaseModel):
+    """Request to get authentication nonce for wallet"""
+    wallet_address: str = Field(..., description="Ethereum wallet address")
+
+
+class NonceResponse(BaseModel):
+    """Nonce response for signature"""
+    nonce: str
+    message: str
+
+
+class AuthVerifyRequest(BaseModel):
+    """Request to verify wallet signature"""
+    wallet_address: str
+    signature: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class AuthResponse(BaseModel):
+    """Authentication response with token"""
+    wallet_address: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    token: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class BorrowerResponse(BaseModel):
+    """Borrower information response"""
+    id: int
+    wallet_address: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    created_at: datetime
+    last_login: Optional[datetime] = None
+    is_active: int
+    
+    class Config:
+        from_attributes = True
+

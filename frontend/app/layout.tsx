@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Chakra_Petch, IBM_Plex_Mono, DM_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Web3Provider } from '@/components/Web3Provider'
 import './globals.css'
 
 const chakraPetch = Chakra_Petch({ 
@@ -36,7 +37,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${chakraPetch.variable} ${ibmPlexMono.variable} ${dmSans.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <Web3Provider>
+          {children}
+        </Web3Provider>
         <Analytics />
       </body>
     </html>
