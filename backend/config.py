@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     lending_pool_address: str = os.getenv("LENDING_POOL_ADDRESS", "")
     liquidity_pool_address: str = os.getenv("LIQUIDITY_POOL_ADDRESS", "")
     
+    # Market Data API
+    coindesk_api_key: str = os.getenv("COINDESK_API_KEY", "")
+    
     # API Settings
     api_host: str = "0.0.0.0"
     api_port: int = 8000

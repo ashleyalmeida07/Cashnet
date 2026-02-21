@@ -10,6 +10,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from agents.simulation_runner import simulation_runner
+from agents.market_data import market_data_service
 
 router = APIRouter(prefix="/agents-sim", tags=["Agents & Simulation"])
 
@@ -186,3 +187,50 @@ async def resolve_fraud_alert(alert_id: str):
     if not resolved:
         raise HTTPException(status_code=404, detail="Alert not found")
     return {"success": True, "data": {"resolved": True}}
+
+
+# ---------------------------------------------------------------------------
+# Real Market Data (CoinDesk API)
+# ---------------------------------------------------------------------------
+
+@router.get("/market/prices")
+async def get_market_prices():
+    """Get real-time prices from CoinDesk API for all supported assets."""
+    try:
+        prices = await market_data_service.fetch_all_prices()
+        return {
+            "success": True,
+            "data": {k: v.to_dict() for k, v in prices.items()},
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/market/price/{symbol}")
+async def get_price(symbol: str):
+    """Get real-time price for a single asset (BTC, ETH, SOL, etc.)."""
+    try:
+        price = await market_data_service.fetch_price(symbol.upper())
+        if price:
+            return {"success": True, "data": price.to_dict()}
+        raise HTTPException(status_code=404, detail=f"Price not found for {symbol}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/market/condition")
+async def get_market_condition():
+    """Get current market sentiment, volatility, and trend analysis."""
+    condition = market_data_service.get_market_condition()
+    return {"success": True, "data": condition.to_dict()}
+
+
+@router.get("/market/all")
+async def get_all_market_data():
+    """Get all market data including prices, conditions, and agent modifiers."""
+    try:
+        # Fetch fresh prices first
+        await market_data_service.fetch_all_prices()
+        return {"success": True, "data": market_data_service.to_dict()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

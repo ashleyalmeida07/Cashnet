@@ -4,6 +4,7 @@ SimulationRunner — Orchestrates all agents together
 - Creates & manages all agent instances
 - Runs the tick loop (async)
 - Coordinates shared state (pool, lending, mempool)
+- Integrates REAL market data from CoinDesk API
 - Feeds events into the FraudMonitor
 - Logs everything for the backend & frontend
 """
@@ -29,6 +30,7 @@ from agents.liquidator_bot import LiquidatorBot
 from agents.mev_bot import MEVBot
 from agents.attacker_agent import AttackerAgent
 from agents.fraud_monitor import FraudMonitor
+from agents.market_data import MarketDataService, market_data_service, PriceData
 
 
 class SimulationRunner:
@@ -36,9 +38,10 @@ class SimulationRunner:
     Central orchestrator that:
       1. Spawns all agent types
       2. Shares PoolState, LendingState, Mempool across agents
-      3. Runs a step-based event loop
-      4. Pipes every event through FraudMonitor
-      5. Exposes state for the API layer
+      3. Integrates REAL market data from CoinDesk API
+      4. Runs a step-based event loop
+      5. Pipes every event through FraudMonitor
+      6. Exposes state for the API layer
     """
 
     def __init__(self):
@@ -47,6 +50,12 @@ class SimulationRunner:
         self.lending = LendingState()
         self.mempool = Mempool()
         self.fraud_monitor = FraudMonitor()
+        
+        # Real market data service
+        self.market_data = market_data_service
+        self._market_prices: Dict[str, PriceData] = {}
+        self._last_market_fetch: float = 0.0
+        self._market_fetch_interval: float = 15.0  # Fetch every 15 seconds
 
         # Agents
         self.agents: List[BaseAgent] = []
@@ -125,6 +134,7 @@ class SimulationRunner:
             agent.pool = self.pool
             agent.lending = self.lending
             agent.mempool = self.mempool
+            agent.market_data = self.market_data  # Inject market data service
             agent._event_callback = self._on_agent_event
 
     # ------------------------------------------------------------------
@@ -213,22 +223,86 @@ class SimulationRunner:
             })
 
     async def _tick(self):
-        """Execute one simulation step: all agents act, then world updates."""
+        """Execute one simulation step: fetch market data, all agents act, then world updates."""
 
-        # 1. Drift the reference price slightly each tick
-        self.pool.drift_reference_price(0.3)
+        # 0. Fetch real market data periodically
+        now = time.time()
+        if now - self._last_market_fetch >= self._market_fetch_interval:
+            try:
+                self._market_prices = await self.market_data.fetch_all_prices()
+                self._last_market_fetch = now
+                
+                # Log market update event
+                market_condition = self.market_data.get_market_condition()
+                btc_price = self._market_prices.get("BTC")
+                eth_price = self._market_prices.get("ETH")
+                
+                self._on_agent_event({
+                    "agent_id": "market_oracle",
+                    "agent_type": "system",
+                    "agent_name": "Market Oracle",
+                    "event_type": "market_update",
+                    "data": {
+                        "btc_price": btc_price.price if btc_price else 0,
+                        "eth_price": eth_price.price if eth_price else 0,
+                        "btc_change_24h": btc_price.change_pct_24h if btc_price else 0,
+                        "eth_change_24h": eth_price.change_pct_24h if eth_price else 0,
+                        "sentiment": market_condition.sentiment,
+                        "volatility": market_condition.volatility,
+                        "risk_level": market_condition.risk_level,
+                        "source": btc_price.source if btc_price else "unknown",
+                    },
+                    "timestamp": time.time(),
+                })
+            except Exception as e:
+                print(f"[SimulationRunner] Market data fetch error: {e}")
 
-        # 2. Occasionally apply random market conditions to lending
+        # 1. Apply real market conditions to pool reference price
+        if self._market_prices:
+            # Use ETH price changes to drive pool price drift
+            eth_data = self._market_prices.get("ETH")
+            if eth_data:
+                # Scale 24h change to per-tick change (assume ~200 ticks per sim)
+                per_tick_drift = eth_data.change_pct_24h / 200
+                self.pool.drift_reference_price(per_tick_drift * 0.5)  # Dampened
+        else:
+            # Fallback: random drift
+            self.pool.drift_reference_price(0.3)
+
+        # 2. Apply market conditions to lending price shocks
+        market_condition = self.market_data.get_market_condition()
+        shock_factor = self.market_data.get_price_shock_factor()
+        
         if random.random() < 0.15:
-            price_shock = random.uniform(-3, 1)  # slight down bias
-            self.lending.apply_price_change(price_shock)
+            # Use real volatility to determine shock magnitude
+            base_shock = random.uniform(-3, 1)
+            real_shock = base_shock * abs(shock_factor) * 0.3
+            self.lending.apply_price_change(real_shock)
+            
+            if abs(real_shock) > 2:
+                self._on_agent_event({
+                    "agent_id": "market_oracle",
+                    "agent_type": "system",
+                    "agent_name": "Market Oracle",
+                    "event_type": "price_shock",
+                    "data": {
+                        "shock_pct": round(real_shock, 2),
+                        "market_sentiment": market_condition.sentiment,
+                        "volatility": market_condition.volatility,
+                    },
+                    "timestamp": time.time(),
+                })
 
-        # 3. Each agent ticks
+        # 3. Each agent ticks with market-aware aggression
         all_actions: List[TradeAction] = []
         for agent in self.agents:
             if agent.state != AgentState.RUNNING or not agent.active:
                 continue
             try:
+                # Apply market-driven aggression modifier
+                agent._market_aggression = self.market_data.get_agent_aggression_modifier(
+                    agent.agent_type.value
+                )
                 actions = await agent.tick(self.current_step)
                 all_actions.extend(actions)
             except Exception as e:
@@ -313,6 +387,9 @@ class SimulationRunner:
             end = self.end_time or time.time()
             elapsed = round(end - self.start_time, 1)
 
+        # Get real market data
+        market_info = self.market_data.to_dict() if self._market_prices else None
+
         return {
             "status": self.status,
             "current_step": self.current_step,
@@ -324,6 +401,7 @@ class SimulationRunner:
             "total_alerts": len(self.fraud_monitor.alerts),
             "pool": self.pool.to_dict(),
             "lending": self.lending.to_dict(),
+            "market_data": market_info,
         }
 
     def get_agents(self) -> List[Dict[str, Any]]:

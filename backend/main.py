@@ -9,8 +9,9 @@ from blockchain_service import blockchain_service
 from config import settings
 
 # Import routers
-from routers import participants, pool, lending, alerts, simulations, api_adapter,auth
 from agents.router import router as agents_router
+from routers import participants, pool, lending, alerts, simulations, api_adapter, auth
+
 
 # Create FastAPI app
 app = FastAPI(
