@@ -34,6 +34,25 @@ class AlertSeverityEnum(str, enum.Enum):
     CRITICAL = "CRITICAL"
 
 
+class AdminAuditorRoleEnum(str, enum.Enum):
+    ADMIN = "ADMIN"
+    AUDITOR = "AUDITOR"
+
+
+class AdminAuditor(Base):
+    """Admin and Auditor accounts authenticated via Google SSO"""
+    __tablename__ = "adminandauditor"
+
+    id = Column(Integer, primary_key=True, index=True)
+    uid = Column(String, unique=True, index=True, nullable=False)  # Google sub (UID)
+    email = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    picture = Column(String)                                         # Google profile picture
+    role = Column(Enum(AdminAuditorRoleEnum), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_login = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class Participant(Base):
     """Registered participants with wallet addresses and roles"""
     __tablename__ = "participants"

@@ -68,3 +68,6 @@ typechain-types/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Firebase service account
+backend/secrets/

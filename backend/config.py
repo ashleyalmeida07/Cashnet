@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     lending_pool_address: str = os.getenv("LENDING_POOL_ADDRESS", "")
     liquidity_pool_address: str = os.getenv("LIQUIDITY_POOL_ADDRESS", "")
     
+    # Firebase (service account key path — set GOOGLE_APPLICATION_CREDENTIALS env var)
+    # No config field needed; firebase-admin reads GOOGLE_APPLICATION_CREDENTIALS automatically.
+
+    # JWT
+    jwt_secret: str = os.getenv("JWT_SECRET", "change-this-secret-in-production")
+
+    # Operator provisioning secret
+    provision_secret: str = os.getenv("PROVISION_SECRET", "provision-secret-change-me")
+
     # API Settings
     api_host: str = "0.0.0.0"
     api_port: int = 8000

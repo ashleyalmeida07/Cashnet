@@ -10,3 +10,5 @@ asyncpg
 alembic
 python-multipart
 httpx
+firebase-admin
+python-jose[cryptography]
