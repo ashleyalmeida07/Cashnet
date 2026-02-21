@@ -19,11 +19,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 from solcx import compile_files, install_solc, set_solc_version
 from web3 import Web3
-from web3.middleware import ExtraDataToPOAMiddleware
+try:
+    from web3.middleware import ExtraDataToPOAMiddleware as poa_middleware
+except ImportError:
+    from web3.middleware import geth_poa_middleware as poa_middleware
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent / ".env.local", override=True)
 
 PRIVATE_KEY   = os.getenv("PRIVATE_KEY")          # deployer private key (no 0x prefix needed)
 RPC_URL       = os.getenv("SEPOLIA_RPC_URL")       # e.g. https://sepolia.infura.io/v3/<KEY>
@@ -139,7 +142,7 @@ def deploy_contract(w3, abi, bytecode, deployer, *constructor_args, label=""):
     })
 
     signed = deployer.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
     log(f"  Tx sent: {tx_hash.hex()}")
     log("  Waiting for confirmation…")
 
@@ -158,7 +161,7 @@ def main():
     # ── Connect ────────────────────────────────────────────────────────────
     section("Connecting to Sepolia")
     w3 = Web3(Web3.HTTPProvider(RPC_URL))
-    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+    w3.middleware_onion.inject(poa_middleware, layer=0)
 
     if not w3.is_connected():
         print("[ERROR] Cannot connect to RPC endpoint. Check SEPOLIA_RPC_URL.")
@@ -187,8 +190,8 @@ def main():
 
     # 2. SimToken (borrowToken + optional tokenA/tokenB for LP)
     abi, bin_ = get_contract(compiled, "SimToken")
-    sim_token_a = deploy_contract(w3, abi, bin_, deployer, "SimTokenA", "STKA", label="SimTokenA")
-    sim_token_b = deploy_contract(w3, abi, bin_, deployer, "SimTokenB", "STKB", label="SimTokenB")
+    sim_token_a = deploy_contract(w3, abi, bin_, deployer, "Palladium", "PLDM", label="Palladium")
+    sim_token_b = deploy_contract(w3, abi, bin_, deployer, "Badassium", "BADM", label="Badassium")
 
     # 3. IdentityRegistry  (needs AccessControl)
     abi, bin_ = get_contract(compiled, "IdentityRegistry")
@@ -245,7 +248,7 @@ def main():
             "gas": 100_000,
         })
         signed = deployer.sign_transaction(tx)
-        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+        tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
         w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
         log(f"  ✓ setLendingPool tx: {tx_hash.hex()}")
     else:
@@ -255,8 +258,8 @@ def main():
     section("Deployment Summary")
     addresses = {
         "AccessControl":    access_ctrl.address,
-        "SimTokenA":        sim_token_a.address,
-        "SimTokenB":        sim_token_b.address,
+        "Palladium":        sim_token_a.address,
+        "Badassium":        sim_token_b.address,
         "IdentityRegistry": identity_registry.address,
         "CreditRegistry":   credit_registry.address,
         "CollateralVault":  collateral_vault.address,

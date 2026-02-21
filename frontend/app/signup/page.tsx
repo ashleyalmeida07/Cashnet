@@ -185,12 +185,12 @@ export default function SignupPage() {
           {/* Wallet Connection */}
           <div className="space-y-6">
             <div className="flex flex-col items-center gap-4 p-8 border border-[color:var(--color-border)] rounded-lg bg-[color:var(--color-bg-secondary)]">
-              <div className="text-6xl mb-2">🔗</div>
+              <div className="text-6xl mb-2">🦊</div>
               <h3 className="text-lg font-bold font-mono text-text-primary">
                 Connect Your Wallet
               </h3>
               <p className="text-text-secondary text-sm font-mono text-center">
-                Sign up with your Ethereum wallet. No passwords needed!
+                Sign up with MetaMask or any Ethereum wallet. No passwords needed!
               </p>
               
               <div className="w-full mt-4">
@@ -203,7 +203,7 @@ export default function SignupPage() {
                     openConnectModal,
                     authenticationStatus,
                     mounted,
-                  }) => {
+                  }: any) => {
                     const ready = mounted && authenticationStatus !== 'loading';
                     const connected =
                       ready &&

@@ -177,7 +177,7 @@ export default function LoginPage() {
                     openConnectModal,
                     authenticationStatus,
                     mounted,
-                  }) => {
+                  }: any) => {
                     const ready = mounted && authenticationStatus !== 'loading';
                     const connected =
                       ready &&

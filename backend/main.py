@@ -9,12 +9,8 @@ from blockchain_service import blockchain_service
 from config import settings
 
 # Import routers
-<<<<<<< HEAD
-from routers import participants, pool, lending, alerts, simulations, api_adapter
+from routers import participants, pool, lending, alerts, simulations, api_adapter,auth
 from agents.router import router as agents_router
-=======
-from routers import participants, pool, lending, alerts, simulations, api_adapter, auth
->>>>>>> metalogin
 
 # Create FastAPI app
 app = FastAPI(
@@ -126,8 +122,8 @@ async def get_contract_addresses():
             "CollateralVault": settings.collateral_vault_address,
             "LendingPool": settings.lending_pool_address,
             "LiquidityPool": settings.liquidity_pool_address,
-            "SimTokenA": settings.sim_token_a_address,
-            "SimTokenB": settings.sim_token_b_address
+            "Palladium (PLDM)": settings.palladium_address,
+            "Badassium (BADM)": settings.badassium_address
         }
     }
 

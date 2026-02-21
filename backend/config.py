@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     
     # Contract Addresses
     access_control_address: str = os.getenv("ACCESS_CONTROL_ADDRESS", "")
-    sim_token_a_address: str = os.getenv("SIM_TOKEN_A_ADDRESS", "")
-    sim_token_b_address: str = os.getenv("SIM_TOKEN_B_ADDRESS", "")
+    palladium_address: str = os.getenv("PALLADIUM_ADDRESS", "")
+    badassium_address: str = os.getenv("BADASSIUM_ADDRESS", "")
     identity_registry_address: str = os.getenv("IDENTITY_REGISTRY_ADDRESS", "")
     credit_registry_address: str = os.getenv("CREDIT_REGISTRY_ADDRESS", "")
     collateral_vault_address: str = os.getenv("COLLATERAL_VAULT_ADDRESS", "")
