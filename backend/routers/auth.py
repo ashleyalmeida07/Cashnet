@@ -14,18 +14,23 @@ from pydantic import BaseModel
 from database import get_db
 from models import AdminAuditor, AdminAuditorRoleEnum
 from config import settings
+import os
 
 # ─── Firebase Admin SDK init (once per process) ─────────────────────────────
 if not firebase_admin._apps:
     # Uses GOOGLE_APPLICATION_CREDENTIALS env var pointing to service account JSON
-    # or Application Default Credentials when running on GCP/Cloud Run.
     try:
-        cred = fb_creds.ApplicationDefault()
-    except Exception:
-        # Fallback: if no credentials found, Firebase verify will raise on each call
-        cred = None
-    if cred is not None:
-        firebase_admin.initialize_app(cred)
+        cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if cred_path and os.path.exists(cred_path):
+            cred = fb_creds.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+        else:
+            # Fallback to Application Default Credentials (for GCP/Cloud Run)
+            cred = fb_creds.ApplicationDefault()
+            firebase_admin.initialize_app(cred)
+    except Exception as e:
+        print(f"Warning: Firebase Admin SDK initialization failed: {e}")
+        print("Firebase token verification will not work until this is resolved.")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
