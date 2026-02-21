@@ -40,11 +40,21 @@ async function apiRequest<T>(
 
 /* === SIMULATION API === */
 export const simulationApi = {
-  startSimulation: () => apiRequest('/api/simulation/start', { method: 'POST' }),
+  startSimulation: (opts?: { max_steps?: number; tick_delay?: number }) =>
+    apiRequest('/api/simulation/start', {
+      method: 'POST',
+      body: JSON.stringify(opts ?? { max_steps: 200, tick_delay: 0.5 }),
+    }),
   getStatus: () => apiRequest('/api/simulation/status'),
+  getSummary: () => apiRequest('/api/simulation/summary'),
   pause: () => apiRequest('/api/simulation/pause', { method: 'POST' }),
   resume: () => apiRequest('/api/simulation/resume', { method: 'POST' }),
   stop: () => apiRequest('/api/simulation/stop', { method: 'POST' }),
+  getTradeLog: (limit = 100) => apiRequest(`/api/sim/trade-log?limit=${limit}`),
+  getActivityFeed: (limit = 50) => apiRequest(`/api/sim/activity-feed?limit=${limit}`),
+  getPoolState: () => apiRequest('/api/sim/pool'),
+  getLendingState: () => apiRequest('/api/sim/lending'),
+  getFraudStats: () => apiRequest('/api/sim/fraud/stats'),
 };
 
 /* === AGENT API === */
@@ -53,7 +63,9 @@ export const agentApi = {
   getAgent: (id: string) => apiRequest(`/api/agents/${id}`),
   updateAgent: (id: string, data: any) =>
     apiRequest(`/api/agents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  getActivityFeed: () => apiRequest('/api/agents/activity-feed'),
+  toggleAgent: (id: string, active: boolean) =>
+    apiRequest(`/api/agents/${id}`, { method: 'PUT', body: JSON.stringify({ active }) }),
+  getActivityFeed: () => apiRequest('/api/sim/activity-feed?limit=50'),
 };
 
 /* === LIQUIDITY API === */

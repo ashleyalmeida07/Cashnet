@@ -1,25 +1,43 @@
 import { create } from 'zustand';
 
+export type AgentType =
+  | 'retail_trader'
+  | 'whale'
+  | 'arbitrage_bot'
+  | 'liquidator_bot'
+  | 'mev_bot'
+  | 'attacker';
+
+export interface AgentStats {
+  trades_count: number;
+  total_volume: number;
+  pnl: number;
+  win_rate: number;
+  alerts_triggered: number;
+}
+
 export interface Agent {
   id: string;
   name: string;
-  type: 'arbitrage' | 'liquidator' | 'maker' | 'trader' | 'oracle' | 'governance';
+  type: AgentType;
   capital: number;
-  currentValue: number;
+  current_value: number;
   pnl: number;
-  winRate: number;
+  win_rate: number;
   active: boolean;
+  state: string;
   risk: 'low' | 'medium' | 'high';
   speed: 'slow' | 'normal' | 'fast';
-  strategy: string;
+  stats: AgentStats;
 }
 
 export interface ActivityFeedItem {
   timestamp: number;
-  agentId: string;
-  action: string;
-  status: 'success' | 'error' | 'pending';
-  details: string;
+  agent_id: string;
+  agent_name: string;
+  agent_type: string;
+  event_type: string;
+  data: Record<string, any>;
 }
 
 interface AgentState {
@@ -29,6 +47,7 @@ interface AgentState {
   setAgents: (agents: Agent[]) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
   addActivityFeedItem: (item: ActivityFeedItem) => void;
+  setActivityFeed: (feed: ActivityFeedItem[]) => void;
   setTotalCapital: (capital: number) => void;
 }
 
@@ -46,8 +65,10 @@ export const useAgentStore = create<AgentState>((set) => ({
   })),
   
   addActivityFeedItem: (item: ActivityFeedItem) => set((state) => ({
-    activityFeed: [item, ...state.activityFeed].slice(0, 20),
+    activityFeed: [item, ...state.activityFeed].slice(0, 50),
   })),
+  
+  setActivityFeed: (feed: ActivityFeedItem[]) => set({ activityFeed: feed }),
   
   setTotalCapital: (capital: number) => set({ totalCapital: capital }),
 }));

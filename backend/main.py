@@ -10,6 +10,7 @@ from config import settings
 
 # Import routers
 from routers import participants, pool, lending, alerts, simulations, api_adapter
+from agents.router import router as agents_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -36,6 +37,7 @@ app.include_router(pool.router)
 app.include_router(lending.router)
 app.include_router(alerts.router)
 app.include_router(simulations.router)
+app.include_router(agents_router)
 
 
 @app.on_event("startup")
@@ -78,7 +80,8 @@ async def root():
             "pool": "/pool",
             "lending": "/lending",
             "alerts": "/alerts",
-            "simulations": "/simulations"
+            "simulations": "/simulations",
+            "agents_simulation": "/agents-sim"
         }
     }
 

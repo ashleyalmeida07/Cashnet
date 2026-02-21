@@ -2,11 +2,12 @@
 API adapter routes to match frontend expectations
 Maps frontend API calls to backend endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from routers import participants, pool, lending, alerts, simulations
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from agents.simulation_runner import simulation_runner
 
 router = APIRouter(prefix="/api", tags=["API Adapter"])
 
@@ -17,97 +18,75 @@ router = APIRouter(prefix="/api", tags=["API Adapter"])
 
 @router.post("/simulation/start")
 async def start_simulation(db: Session = Depends(get_db)):
-    """Start a new simulation"""
-    from schemas import SimulationCreate
+    """Start the multi-agent simulation engine"""
     from models import Simulation
     
-    sim = Simulation(name="New Simulation", status="running")
+    # Also persist to DB
+    sim = Simulation(name="Agent Simulation", status="running")
     db.add(sim)
     db.commit()
     db.refresh(sim)
     
+    result = await simulation_runner.start(max_steps=200, tick_delay=0.5)
     return {
         "success": True,
         "data": {
             "id": sim.id,
             "status": "running",
-            "start_time": sim.start_time.isoformat()
+            "start_time": sim.start_time.isoformat(),
+            **result,
         }
     }
 
 
 @router.get("/simulation/status")
-async def get_simulation_status(db: Session = Depends(get_db)):
-    """Get current simulation status"""
-    from models import Simulation
-    
-    sim = db.query(Simulation).filter(
-        Simulation.status == "running"
-    ).first()
-    
-    if not sim:
-        return {"success": True, "data": {"status": "idle"}}
-    
-    return {
-        "success": True,
-        "data": {
-            "id": sim.id,
-            "status": sim.status,
-            "agents_count": sim.agents_count,
-            "transactions_count": sim.transactions_count,
-            "alerts_count": sim.alerts_count
-        }
-    }
+async def get_simulation_status():
+    """Get current simulation engine status"""
+    data = simulation_runner.get_status()
+    return {"success": True, "data": data}
 
 
 @router.post("/simulation/pause")
-async def pause_simulation(db: Session = Depends(get_db)):
-    """Pause running simulation"""
-    from models import Simulation
-    
-    sim = db.query(Simulation).filter(
-        Simulation.status == "running"
-    ).first()
-    
-    if sim:
-        sim.status = "paused"
-        db.commit()
-    
-    return {"success": True, "data": {"status": "paused"}}
+async def pause_simulation():
+    """Pause the simulation engine"""
+    result = await simulation_runner.pause()
+    return {"success": True, "data": result}
 
 
 @router.post("/simulation/resume")
-async def resume_simulation(db: Session = Depends(get_db)):
-    """Resume paused simulation"""
-    from models import Simulation
-    
-    sim = db.query(Simulation).filter(
-        Simulation.status == "paused"
-    ).first()
-    
-    if sim:
-        sim.status = "running"
-        db.commit()
-    
-    return {"success": True, "data": {"status": "running"}}
+async def resume_simulation():
+    """Resume the simulation engine"""
+    result = await simulation_runner.resume()
+    return {"success": True, "data": result}
 
 
 @router.post("/simulation/stop")
 async def stop_simulation(db: Session = Depends(get_db)):
-    """Stop running simulation"""
+    """Stop the simulation engine"""
     from models import Simulation
     from datetime import datetime
     
+    result = await simulation_runner.stop()
+    
+    # Also update DB
     sim = db.query(Simulation).filter(
         Simulation.status.in_(["running", "paused"])
     ).first()
-    
     if sim:
         sim.status = "completed"
         sim.end_time = datetime.utcnow()
+        sim.agents_count = len(simulation_runner.agents)
+        sim.transactions_count = len(simulation_runner.trade_log)
+        sim.alerts_count = len(simulation_runner.fraud_monitor.alerts)
         db.commit()
     
-    return {"success": True, "data": {"status": "stopped"}}
+    return {"success": True, "data": result}
+
+
+@router.get("/simulation/summary")
+async def get_simulation_summary():
+    """Get full simulation summary with agent stats and fraud data"""
+    return {"success": True, "data": simulation_runner.get_summary()}
 
 
 # ============================================================================
@@ -115,74 +94,88 @@ async def stop_simulation(db: Session = Depends(get_db)):
 # ============================================================================
 
 @router.get("/agents")
-async def list_agents(db: Session = Depends(get_db)):
-    """List all agents/participants"""
+async def list_agents():
+    """List all simulation agents with live state"""
+    agents = simulation_runner.get_agents()
+    if agents:
+        return {"success": True, "data": agents}
+    
+    # Fallback to DB participants if no simulation running
     from models import Participant
-    
-    agents = db.query(Participant).all()
-    
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": str(agent.id),
-                "wallet": agent.wallet,
-                "role": agent.role,
-                "score": agent.score,
-                "status": "active"
-            }
-            for agent in agents
-        ]
-    }
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        participants_list = db.query(Participant).all()
+        return {
+            "success": True,
+            "data": [
+                {
+                    "id": str(p.id),
+                    "wallet": p.wallet,
+                    "role": p.role,
+                    "score": p.score,
+                    "status": "active"
+                }
+                for p in participants_list
+            ]
+        }
+    finally:
+        db.close()
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str, db: Session = Depends(get_db)):
-    """Get specific agent details"""
-    from models import Participant
-    
-    try:
-        agent = db.query(Participant).filter(Participant.id == int(agent_id)).first()
-        
-        if not agent:
-            raise HTTPException(status_code=404, detail="Agent not found")
-        
-        return {
-            "success": True,
-            "data": {
-                "id": str(agent.id),
-                "wallet": agent.wallet,
-                "role": agent.role,
-                "score": agent.score,
-                "created_at": agent.created_at.isoformat()
-            }
-        }
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid agent ID")
+async def get_agent(agent_id: str):
+    """Get specific agent details from simulation"""
+    agent = simulation_runner.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"success": True, "data": agent}
+
+
+@router.put("/agents/{agent_id}")
+async def update_agent(agent_id: str, data: Dict[str, Any]):
+    """Update an agent (toggle active, update capital, etc.)"""
+    if "active" in data:
+        result = simulation_runner.toggle_agent(agent_id, data["active"])
+        if result:
+            return {"success": True, "data": result}
+    if "capital" in data:
+        result = simulation_runner.update_agent_capital(agent_id, data["capital"])
+        if result:
+            return {"success": True, "data": result}
+    raise HTTPException(status_code=404, detail="Agent not found")
 
 
 @router.get("/agents/activity-feed")
-async def get_activity_feed(db: Session = Depends(get_db)):
-    """Get recent agent activity"""
+async def get_activity_feed():
+    """Get recent agent activity from simulation"""
+    feed = simulation_runner.get_activity_feed(50)
+    if feed:
+        return {"success": True, "data": feed}
+    
+    # Fallback to DB transactions
     from models import Transaction
-    
-    transactions = db.query(Transaction).order_by(
-        Transaction.timestamp.desc()
-    ).limit(50).all()
-    
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": str(tx.id),
-                "wallet": tx.wallet,
-                "type": tx.type,
-                "amount": tx.amount,
-                "timestamp": tx.timestamp.isoformat()
-            }
-            for tx in transactions
-        ]
-    }
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        transactions = db.query(Transaction).order_by(
+            Transaction.timestamp.desc()
+        ).limit(50).all()
+        return {
+            "success": True,
+            "data": [
+                {
+                    "id": str(tx.id),
+                    "wallet": tx.wallet,
+                    "type": tx.type,
+                    "amount": tx.amount,
+                    "timestamp": tx.timestamp.isoformat()
+                }
+                for tx in transactions
+            ]
+        }
+    finally:
+        db.close()
 
 
 # ============================================================================
@@ -191,16 +184,18 @@ async def get_activity_feed(db: Session = Depends(get_db)):
 
 @router.get("/liquidity/pool")
 async def get_pool_data():
-    """Get current pool data"""
+    """Get current pool data from simulation engine"""
+    pool = simulation_runner.pool
     return {
         "success": True,
         "data": {
-            "reserve_a": 1000000.0,
-            "reserve_b": 2000000.0,
-            "price_a_per_b": 2.0,
-            "price_b_per_a": 0.5,
-            "total_liquidity": 3000000.0,
-            "volume_24h": 150000.0
+            "reserve_a": round(pool.reserve_a, 2),
+            "reserve_b": round(pool.reserve_b, 2),
+            "price_a_per_b": round(pool.price_a_per_b, 6),
+            "price_b_per_a": round(pool.price_b_per_a, 6),
+            "total_liquidity": round(pool.reserve_a + pool.reserve_b, 2),
+            "volume_24h": round(pool.total_volume, 2),
+            "swap_count": pool.swap_count,
         }
     }
 
@@ -365,48 +360,56 @@ async def trigger_liquidation(borrower_id: str, db: Session = Depends(get_db)):
 # ============================================================================
 
 @router.get("/threats/scores")
-async def get_threat_scores(db: Session = Depends(get_db)):
-    """Get threat scores for all wallets"""
-    from models import Participant
+async def get_threat_scores():
+    """Get threat scores from simulation fraud monitor"""
+    scores = simulation_runner.fraud_monitor.get_threat_scores()
+    if scores:
+        return {"success": True, "data": scores}
     
-    participants = db.query(Participant).all()
-    
+    # Default scores
     return {
         "success": True,
         "data": [
-            {
-                "wallet": p.wallet,
-                "risk_level": "LOW" if p.score > 600 else "MEDIUM" if p.score > 400 else "HIGH",
-                "score": p.score,
-                "alert_count": 0
-            }
-            for p in participants
+            {"axis": "MEV", "score": 5, "status": "safe"},
+            {"axis": "Flash Loan", "score": 5, "status": "safe"},
+            {"axis": "Liquidity", "score": 5, "status": "safe"},
+            {"axis": "Cascade", "score": 5, "status": "safe"},
+            {"axis": "Price", "score": 5, "status": "safe"},
+            {"axis": "Systemic", "score": 5, "status": "safe"},
         ]
     }
 
 
 @router.get("/threats/alerts")
-async def get_alerts(db: Session = Depends(get_db)):
-    """Get all threat alerts"""
+async def get_alerts():
+    """Get threat alerts from fraud monitor + DB"""
+    fraud_alerts = simulation_runner.fraud_monitor.get_alerts(limit=50)
+    if fraud_alerts:
+        return {"success": True, "data": fraud_alerts}
+    
+    # Fallback to DB
     from models import Alert
-    
-    alerts_list = db.query(Alert).order_by(Alert.timestamp.desc()).all()
-    
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": str(alert.id),
-                "type": alert.type,
-                "severity": alert.severity,
-                "wallet": alert.wallet,
-                "description": alert.description,
-                "timestamp": alert.timestamp.isoformat(),
-                "resolved": alert.resolved == 1
-            }
-            for alert in alerts_list
-        ]
-    }
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        alerts_list = db.query(Alert).order_by(Alert.timestamp.desc()).all()
+        return {
+            "success": True,
+            "data": [
+                {
+                    "id": str(alert.id),
+                    "type": alert.type,
+                    "severity": alert.severity,
+                    "wallet": alert.wallet,
+                    "description": alert.description,
+                    "timestamp": alert.timestamp.isoformat(),
+                    "resolved": alert.resolved == 1
+                }
+                for alert in alerts_list
+            ]
+        }
+    finally:
+        db.close()
 
 
 @router.post("/threats/alerts/{alert_id}/resolve")
@@ -676,3 +679,41 @@ async def get_wallet_balance(address: str):
             "success": False,
             "error": str(e)
         }
+
+
+# ============================================================================
+# SIMULATION ENGINE API (live agent simulation)
+# ============================================================================
+
+@router.get("/sim/trade-log")
+async def get_trade_log(limit: int = 100):
+    """Get the trade action log from the live simulation."""
+    return {"success": True, "data": simulation_runner.get_trade_log(limit)}
+
+
+@router.get("/sim/activity-feed")
+async def get_sim_activity_feed(limit: int = 50):
+    """Get the live simulation activity feed."""
+    return {"success": True, "data": simulation_runner.get_activity_feed(limit)}
+
+
+@router.get("/sim/fraud/stats")
+async def get_sim_fraud_stats():
+    """Get fraud monitor statistics from the live simulation."""
+    return {"success": True, "data": simulation_runner.fraud_monitor.get_stats()}
+
+
+@router.get("/sim/pool")
+async def get_sim_pool():
+    """Get live simulation pool state."""
+    return {"success": True, "data": simulation_runner.pool.to_dict()}
+
+
+@router.get("/sim/lending")
+async def get_sim_lending():
+    """Get live simulation lending state."""
+    data = simulation_runner.lending.to_dict()
+    data["positions"] = [
+        p.to_dict() for p in simulation_runner.lending.positions.values()
+    ]
+    return {"success": True, "data": data}
