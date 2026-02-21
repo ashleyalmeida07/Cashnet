@@ -2,18 +2,18 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./GlobalAccessControl.sol";
+import "./AccessControl.sol";
 import "./CollateralVault.sol";
 import "./CreditRegistry.sol";
 
 contract LendingPool {
-    GlobalAccessControl public access;
+    AccessControl public accessControl;
     CollateralVault public vault;
     CreditRegistry public credit;
     IERC20 public borrowToken;
 
     uint256 public totalBorrowed;
-    uint256 public constant MOCK_ETH_PRICE = 2000e18; // 1 ETH = 2000 Tokens for simulation
+    uint256 public constant MOCK_ETH_PRICE = 2000e18; 
 
     struct Loan {
         uint256 amount;
@@ -28,14 +28,13 @@ contract LendingPool {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed user, address indexed liquidator, uint256 debtRecovered);
 
-    constructor(address _access, address _vault, address _credit, address _borrowToken) {
-        access = GlobalAccessControl(_access);
+    constructor(address _accessControl, address _vault, address _credit, address _borrowToken) {
+        accessControl = AccessControl(_accessControl);
         vault = CollateralVault(_vault);
         credit = CreditRegistry(_credit);
         borrowToken = IERC20(_borrowToken);
     }
 
-    // Simple utilization rate: base rate 5% + up to 15% based on pool utilization
     function getCurrentInterestRate() public view returns (uint256) {
         uint256 poolBalance = borrowToken.balanceOf(address(this));
         if (poolBalance == 0 && totalBorrowed == 0) return 5;
@@ -45,14 +44,14 @@ contract LendingPool {
     }
 
     function depositCollateral() external payable {
-        require(!access.paused(), "System Paused");
+        require(!accessControl.paused(), "System Paused");
         vault.lockCollateral{value: msg.value}(msg.sender);
         emit CollateralDeposited(msg.sender, msg.value);
     }
 
     function borrow(uint256 amount) external {
-        require(!access.paused(), "System Paused");
-        require(access.hasRole(access.BORROWER_ROLE(), msg.sender), "Not verified borrower");
+        require(!accessControl.paused(), "System Paused");
+        require(accessControl.hasRole(accessControl.BORROWER_ROLE(), msg.sender), "Not verified borrower");
 
         _updateInterest(msg.sender);
 
@@ -73,7 +72,7 @@ contract LendingPool {
     }
 
     function repay(uint256 amount) external {
-        require(!access.paused(), "System Paused");
+        require(!accessControl.paused(), "System Paused");
         _updateInterest(msg.sender);
 
         uint256 totalDebt = loans[msg.sender].amount + loans[msg.sender].interestAccrued;
@@ -94,25 +93,23 @@ contract LendingPool {
     }
 
     function liquidate(address user) external {
-        require(!access.paused(), "System Paused");
+        require(!accessControl.paused(), "System Paused");
         _updateInterest(user);
 
         uint256 maxLtv = credit.getMaxLTV(user);
         uint256 collateralValue = (vault.ethCollateral(user) * MOCK_ETH_PRICE) / 1e18;
-        uint256 liquidationThreshold = (collateralValue * (maxLtv + 5)) / 100; // Drops 5% past LTV
+        uint256 liquidationThreshold = (collateralValue * (maxLtv + 5)) / 100; 
 
         uint256 totalDebt = loans[user].amount + loans[user].interestAccrued;
         require(totalDebt > liquidationThreshold, "Health factor OK");
 
         uint256 ethToSeize = (totalDebt * 1e18) / MOCK_ETH_PRICE;
         
-        // Liquidator pays off debt
         borrowToken.transferFrom(msg.sender, address(this), totalDebt);
         
         totalBorrowed -= loans[user].amount;
         delete loans[user];
 
-        // Seize collateral and give to liquidator
         vault.seizeCollateral(user, msg.sender, ethToSeize);
 
         emit Liquidated(user, msg.sender, totalDebt);
@@ -124,7 +121,6 @@ contract LendingPool {
             uint256 baseRate = getCurrentInterestRate();
             uint256 userRate = (baseRate * credit.getInterestMultiplier(user)) / 100;
             
-            // Simple interest for simulation: (Principal * Rate * Time) / (Seconds in Year)
             uint256 newInterest = (loans[user].amount * userRate * timeElapsed) / (100 * 31536000);
             loans[user].interestAccrued += newInterest;
         }

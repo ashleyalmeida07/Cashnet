@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./GlobalAccessControl.sol";
+import "./AccessControl.sol";
 
 contract IdentityRegistry {
-    GlobalAccessControl public accessControl;
+    AccessControl public accessControl;
 
     struct Identity {
         bool isRegistered;
@@ -17,7 +17,7 @@ contract IdentityRegistry {
     event UserVerified(address indexed wallet);
 
     constructor(address _accessControl) {
-        accessControl = GlobalAccessControl(_accessControl);
+        accessControl = AccessControl(_accessControl);
     }
 
     function register() external {
@@ -31,7 +31,6 @@ contract IdentityRegistry {
         require(identities[user].isRegistered, "Not registered");
         identities[user].isVerified = true;
         
-        // Automatically grant borrower/lender roles upon verification
         accessControl.grantRole(accessControl.BORROWER_ROLE(), user);
         accessControl.grantRole(accessControl.LENDER_ROLE(), user);
         

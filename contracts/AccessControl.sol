@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessControl as OZAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-contract GlobalAccessControl is AccessControl, Pausable {
+contract AccessControl is OZAccessControl, Pausable {
     bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
     bytes32 public constant LENDER_ROLE = keccak256("LENDER_ROLE");
     bytes32 public constant BORROWER_ROLE = keccak256("BORROWER_ROLE");
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
-    bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE"); // For backend credit updates
+    bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE"); 
 
     constructor() {
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -17,16 +17,6 @@ contract GlobalAccessControl is AccessControl, Pausable {
 
     modifier onlyAdmin() {
         require(hasRole(ADMIN_ROLE, msg.sender), "Not Admin");
-        _;
-    }
-
-    modifier onlyBorrower() {
-        require(hasRole(BORROWER_ROLE, msg.sender), "Not Borrower");
-        _;
-    }
-
-    modifier onlyLender() {
-        require(hasRole(LENDER_ROLE, msg.sender), "Not Lender");
         _;
     }
 

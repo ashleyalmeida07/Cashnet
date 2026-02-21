@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./GlobalAccessControl.sol";
+import "./AccessControl.sol";
 
 contract CollateralVault {
-    GlobalAccessControl public access;
+    AccessControl public accessControl;
     address public lendingPool;
 
     mapping(address => uint256) public ethCollateral;
 
-    constructor(address _access) {
-        access = GlobalAccessControl(_access);
+    constructor(address _accessControl) {
+        accessControl = AccessControl(_accessControl);
     }
 
     function setLendingPool(address _lendingPool) external {
-        require(access.hasRole(access.ADMIN_ROLE(), msg.sender), "Not Admin");
+        require(accessControl.hasRole(accessControl.ADMIN_ROLE(), msg.sender), "Not Admin");
         lendingPool = _lendingPool;
     }
 
