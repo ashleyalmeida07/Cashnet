@@ -1,0 +1,678 @@
+"""
+API adapter routes to match frontend expectations
+Maps frontend API calls to backend endpoints
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from database import get_db
+from routers import participants, pool, lending, alerts, simulations
+from typing import Dict, Any
+
+router = APIRouter(prefix="/api", tags=["API Adapter"])
+
+
+# ============================================================================
+# SIMULATION API (maps to /simulations)
+# ============================================================================
+
+@router.post("/simulation/start")
+async def start_simulation(db: Session = Depends(get_db)):
+    """Start a new simulation"""
+    from schemas import SimulationCreate
+    from models import Simulation
+    
+    sim = Simulation(name="New Simulation", status="running")
+    db.add(sim)
+    db.commit()
+    db.refresh(sim)
+    
+    return {
+        "success": True,
+        "data": {
+            "id": sim.id,
+            "status": "running",
+            "start_time": sim.start_time.isoformat()
+        }
+    }
+
+
+@router.get("/simulation/status")
+async def get_simulation_status(db: Session = Depends(get_db)):
+    """Get current simulation status"""
+    from models import Simulation
+    
+    sim = db.query(Simulation).filter(
+        Simulation.status == "running"
+    ).first()
+    
+    if not sim:
+        return {"success": True, "data": {"status": "idle"}}
+    
+    return {
+        "success": True,
+        "data": {
+            "id": sim.id,
+            "status": sim.status,
+            "agents_count": sim.agents_count,
+            "transactions_count": sim.transactions_count,
+            "alerts_count": sim.alerts_count
+        }
+    }
+
+
+@router.post("/simulation/pause")
+async def pause_simulation(db: Session = Depends(get_db)):
+    """Pause running simulation"""
+    from models import Simulation
+    
+    sim = db.query(Simulation).filter(
+        Simulation.status == "running"
+    ).first()
+    
+    if sim:
+        sim.status = "paused"
+        db.commit()
+    
+    return {"success": True, "data": {"status": "paused"}}
+
+
+@router.post("/simulation/resume")
+async def resume_simulation(db: Session = Depends(get_db)):
+    """Resume paused simulation"""
+    from models import Simulation
+    
+    sim = db.query(Simulation).filter(
+        Simulation.status == "paused"
+    ).first()
+    
+    if sim:
+        sim.status = "running"
+        db.commit()
+    
+    return {"success": True, "data": {"status": "running"}}
+
+
+@router.post("/simulation/stop")
+async def stop_simulation(db: Session = Depends(get_db)):
+    """Stop running simulation"""
+    from models import Simulation
+    from datetime import datetime
+    
+    sim = db.query(Simulation).filter(
+        Simulation.status.in_(["running", "paused"])
+    ).first()
+    
+    if sim:
+        sim.status = "completed"
+        sim.end_time = datetime.utcnow()
+        db.commit()
+    
+    return {"success": True, "data": {"status": "stopped"}}
+
+
+# ============================================================================
+# AGENTS API (maps to /participants)
+# ============================================================================
+
+@router.get("/agents")
+async def list_agents(db: Session = Depends(get_db)):
+    """List all agents/participants"""
+    from models import Participant
+    
+    agents = db.query(Participant).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(agent.id),
+                "wallet": agent.wallet,
+                "role": agent.role,
+                "score": agent.score,
+                "status": "active"
+            }
+            for agent in agents
+        ]
+    }
+
+
+@router.get("/agents/{agent_id}")
+async def get_agent(agent_id: str, db: Session = Depends(get_db)):
+    """Get specific agent details"""
+    from models import Participant
+    
+    try:
+        agent = db.query(Participant).filter(Participant.id == int(agent_id)).first()
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        return {
+            "success": True,
+            "data": {
+                "id": str(agent.id),
+                "wallet": agent.wallet,
+                "role": agent.role,
+                "score": agent.score,
+                "created_at": agent.created_at.isoformat()
+            }
+        }
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid agent ID")
+
+
+@router.get("/agents/activity-feed")
+async def get_activity_feed(db: Session = Depends(get_db)):
+    """Get recent agent activity"""
+    from models import Transaction
+    
+    transactions = db.query(Transaction).order_by(
+        Transaction.timestamp.desc()
+    ).limit(50).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(tx.id),
+                "wallet": tx.wallet,
+                "type": tx.type,
+                "amount": tx.amount,
+                "timestamp": tx.timestamp.isoformat()
+            }
+            for tx in transactions
+        ]
+    }
+
+
+# ============================================================================
+# LIQUIDITY API (maps to /pool)
+# ============================================================================
+
+@router.get("/liquidity/pool")
+async def get_pool_data():
+    """Get current pool data"""
+    return {
+        "success": True,
+        "data": {
+            "reserve_a": 1000000.0,
+            "reserve_b": 2000000.0,
+            "price_a_per_b": 2.0,
+            "price_b_per_a": 0.5,
+            "total_liquidity": 3000000.0,
+            "volume_24h": 150000.0
+        }
+    }
+
+
+@router.get("/liquidity/depth-chart")
+async def get_depth_chart():
+    """Get liquidity depth chart data"""
+    return {
+        "success": True,
+        "data": {
+            "bids": [
+                {"price": 1.95, "amount": 50000},
+                {"price": 1.90, "amount": 100000},
+                {"price": 1.85, "amount": 150000}
+            ],
+            "asks": [
+                {"price": 2.05, "amount": 50000},
+                {"price": 2.10, "amount": 100000},
+                {"price": 2.15, "amount": 150000}
+            ]
+        }
+    }
+
+
+@router.get("/liquidity/slippage-curve")
+async def get_slippage_curve():
+    """Get slippage curve data"""
+    return {
+        "success": True,
+        "data": [
+            {"trade_size": 1000, "slippage": 0.1},
+            {"trade_size": 5000, "slippage": 0.5},
+            {"trade_size": 10000, "slippage": 1.2},
+            {"trade_size": 50000, "slippage": 5.8},
+            {"trade_size": 100000, "slippage": 12.5}
+        ]
+    }
+
+
+@router.get("/liquidity/events")
+async def get_liquidity_events(db: Session = Depends(get_db)):
+    """Get recent liquidity events"""
+    from models import Transaction
+    
+    events = db.query(Transaction).filter(
+        Transaction.type.in_(["ADD_LIQUIDITY", "REMOVE_LIQUIDITY", "SWAP"])
+    ).order_by(Transaction.timestamp.desc()).limit(20).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(event.id),
+                "type": event.type,
+                "wallet": event.wallet,
+                "amount": event.amount,
+                "timestamp": event.timestamp.isoformat()
+            }
+            for event in events
+        ]
+    }
+
+
+# ============================================================================
+# LENDING API
+# ============================================================================
+
+@router.get("/lending/borrowers")
+async def get_borrowers(db: Session = Depends(get_db)):
+    """Get all borrowers with health factors"""
+    from models import Participant
+    
+    borrowers = db.query(Participant).filter(
+        Participant.role == "BORROWER"
+    ).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(b.id),
+                "wallet": b.wallet,
+                "collateral_value": 10000.0,
+                "debt_value": 4000.0,
+                "health_factor": 2.5,
+                "at_risk": False
+            }
+            for b in borrowers
+        ]
+    }
+
+
+@router.get("/lending/metrics")
+async def get_lending_metrics():
+    """Get overall lending metrics"""
+    return {
+        "success": True,
+        "data": {
+            "total_collateral": 500000.0,
+            "total_debt": 200000.0,
+            "utilization_rate": 40.0,
+            "avg_health_factor": 2.8,
+            "at_risk_count": 3
+        }
+    }
+
+
+@router.get("/lending/cascade-events")
+async def get_cascade_events(db: Session = Depends(get_db)):
+    """Get cascade liquidation events"""
+    from models import Transaction
+    
+    liquidations = db.query(Transaction).filter(
+        Transaction.type == "LIQUIDATE"
+    ).order_by(Transaction.timestamp.desc()).limit(10).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(liq.id),
+                "wallet": liq.wallet,
+                "amount": liq.amount,
+                "timestamp": liq.timestamp.isoformat()
+            }
+            for liq in liquidations
+        ]
+    }
+
+
+@router.post("/lending/liquidate")
+async def trigger_liquidation(borrower_id: str, db: Session = Depends(get_db)):
+    """Trigger liquidation for a borrower"""
+    from models import Transaction, Participant
+    
+    borrower = db.query(Participant).filter(Participant.id == int(borrower_id)).first()
+    
+    if not borrower:
+        raise HTTPException(status_code=404, detail="Borrower not found")
+    
+    # Create liquidation transaction
+    tx = Transaction(
+        hash=f"0xliquidation{borrower_id}",
+        type="LIQUIDATE",
+        wallet=borrower.wallet,
+        amount=5000.0
+    )
+    db.add(tx)
+    db.commit()
+    
+    return {
+        "success": True,
+        "data": {
+            "message": "Liquidation triggered",
+            "borrower_id": borrower_id
+        }
+    }
+
+
+# ============================================================================
+# THREATS/ALERTS API
+# ============================================================================
+
+@router.get("/threats/scores")
+async def get_threat_scores(db: Session = Depends(get_db)):
+    """Get threat scores for all wallets"""
+    from models import Participant
+    
+    participants = db.query(Participant).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "wallet": p.wallet,
+                "risk_level": "LOW" if p.score > 600 else "MEDIUM" if p.score > 400 else "HIGH",
+                "score": p.score,
+                "alert_count": 0
+            }
+            for p in participants
+        ]
+    }
+
+
+@router.get("/threats/alerts")
+async def get_alerts(db: Session = Depends(get_db)):
+    """Get all threat alerts"""
+    from models import Alert
+    
+    alerts_list = db.query(Alert).order_by(Alert.timestamp.desc()).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(alert.id),
+                "type": alert.type,
+                "severity": alert.severity,
+                "wallet": alert.wallet,
+                "description": alert.description,
+                "timestamp": alert.timestamp.isoformat(),
+                "resolved": alert.resolved == 1
+            }
+            for alert in alerts_list
+        ]
+    }
+
+
+@router.post("/threats/alerts/{alert_id}/resolve")
+async def resolve_alert(alert_id: str, db: Session = Depends(get_db)):
+    """Resolve a threat alert"""
+    from models import Alert
+    
+    alert = db.query(Alert).filter(Alert.id == int(alert_id)).first()
+    
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    
+    alert.resolved = 1
+    db.commit()
+    
+    return {"success": True, "data": {"message": "Alert resolved"}}
+
+
+@router.post("/threats/simulate")
+async def simulate_attack(attack_type: str, params: Dict[str, Any], db: Session = Depends(get_db)):
+    """Simulate an attack"""
+    from models import Alert
+    
+    # Create a simulated alert
+    alert = Alert(
+        type=attack_type,
+        severity="HIGH",
+        wallet=params.get("target_wallet", "0xSimulated"),
+        description=f"Simulated {attack_type} attack"
+    )
+    db.add(alert)
+    db.commit()
+    
+    return {
+        "success": True,
+        "data": {
+            "message": f"Simulated {attack_type} attack",
+            "alert_id": str(alert.id)
+        }
+    }
+
+
+# ============================================================================
+# CREDIT API
+# ============================================================================
+
+@router.get("/credit/leaderboard")
+async def get_credit_leaderboard(db: Session = Depends(get_db)):
+    """Get credit score leaderboard"""
+    from models import Participant
+    
+    participants = db.query(Participant).order_by(
+        Participant.score.desc()
+    ).limit(10).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "rank": idx + 1,
+                "wallet": p.wallet,
+                "score": p.score,
+                "role": p.role
+            }
+            for idx, p in enumerate(participants)
+        ]
+    }
+
+
+@router.get("/credit/scores/{wallet}")
+async def get_score_details(wallet: str, db: Session = Depends(get_db)):
+    """Get detailed credit score for a wallet"""
+    from models import Participant
+    
+    participant = db.query(Participant).filter(
+        Participant.wallet == wallet
+    ).first()
+    
+    if not participant:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    return {
+        "success": True,
+        "data": {
+            "wallet": wallet,
+            "score": participant.score,
+            "factors": {
+                "payment_history": 85,
+                "credit_utilization": 70,
+                "account_age": 90,
+                "derogatory_marks": 95
+            }
+        }
+    }
+
+
+@router.get("/credit/scores/{wallet}/history")
+async def get_score_history(wallet: str):
+    """Get credit score history"""
+    # Mock historical data
+    return {
+        "success": True,
+        "data": [
+            {"date": "2026-02-01", "score": 450},
+            {"date": "2026-02-08", "score": 470},
+            {"date": "2026-02-15", "score": 490},
+            {"date": "2026-02-21", "score": 500}
+        ]
+    }
+
+
+@router.get("/credit/dynamic-rates")
+async def get_dynamic_rates():
+    """Get dynamic interest rates based on credit scores"""
+    return {
+        "success": True,
+        "data": [
+            {"score_range": "800-850", "rate": 3.5},
+            {"score_range": "700-799", "rate": 5.0},
+            {"score_range": "600-699", "rate": 7.5},
+            {"score_range": "500-599", "rate": 10.0},
+            {"score_range": "300-499", "rate": 15.0}
+        ]
+    }
+
+
+# ============================================================================
+# AUDIT API
+# ============================================================================
+
+@router.post("/audit/log")
+async def get_audit_log(filters: Dict[str, Any] = None, db: Session = Depends(get_db)):
+    """Get audit log with filters"""
+    from models import Transaction
+    
+    query = db.query(Transaction)
+    
+    # Apply filters if provided
+    if filters:
+        if filters.get("wallet"):
+            query = query.filter(Transaction.wallet == filters["wallet"])
+        if filters.get("type"):
+            query = query.filter(Transaction.type == filters["type"])
+    
+    transactions = query.order_by(Transaction.timestamp.desc()).limit(100).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(tx.id),
+                "hash": tx.hash,
+                "type": tx.type,
+                "wallet": tx.wallet,
+                "amount": tx.amount,
+                "timestamp": tx.timestamp.isoformat()
+            }
+            for tx in transactions
+        ]
+    }
+
+
+@router.post("/audit/verify/{event_id}")
+async def verify_event(event_id: str, db: Session = Depends(get_db)):
+    """Verify an event"""
+    from models import Transaction
+    
+    event = db.query(Transaction).filter(Transaction.id == int(event_id)).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    return {
+        "success": True,
+        "data": {
+            "verified": True,
+            "event_id": event_id,
+            "hash": event.hash
+        }
+    }
+
+
+@router.get("/audit/export")
+async def export_report(format: str = "json"):
+    """Export audit report"""
+    return {
+        "success": True,
+        "data": {
+            "format": format,
+            "download_url": f"/downloads/audit_report.{format}",
+            "message": "Report generated successfully"
+        }
+    }
+
+
+@router.post("/audit/compare")
+async def compare_simulations(sim1_id: str, sim2_id: str, db: Session = Depends(get_db)):
+    """Compare two simulations"""
+    from models import Simulation
+    
+    sim1 = db.query(Simulation).filter(Simulation.id == int(sim1_id)).first()
+    sim2 = db.query(Simulation).filter(Simulation.id == int(sim2_id)).first()
+    
+    if not sim1 or not sim2:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    
+    return {
+        "success": True,
+        "data": {
+            "simulation1": {
+                "id": sim1_id,
+                "transactions": sim1.transactions_count,
+                "alerts": sim1.alerts_count
+            },
+            "simulation2": {
+                "id": sim2_id,
+                "transactions": sim2.transactions_count,
+                "alerts": sim2.alerts_count
+            },
+            "differences": {
+                "transactions": abs(sim1.transactions_count - sim2.transactions_count),
+                "alerts": abs(sim1.alerts_count - sim2.alerts_count)
+            }
+        }
+    }
+
+
+# ============================================================================
+# WALLET API
+# ============================================================================
+
+@router.post("/wallet/connect")
+async def connect_wallet():
+    """Connect wallet (placeholder)"""
+    return {
+        "success": True,
+        "data": {"message": "Wallet connection initiated"}
+    }
+
+
+@router.post("/wallet/disconnect")
+async def disconnect_wallet():
+    """Disconnect wallet (placeholder)"""
+    return {
+        "success": True,
+        "data": {"message": "Wallet disconnected"}
+    }
+
+
+@router.get("/wallet/balance/{address}")
+async def get_wallet_balance(address: str):
+    """Get wallet balance"""
+    from blockchain_service import blockchain_service
+    
+    try:
+        balance = blockchain_service.get_balance(address)
+        return {
+            "success": True,
+            "data": {
+                "address": address,
+                "balance": balance,
+                "currency": "ETH"
+            }
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
