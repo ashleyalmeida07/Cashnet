@@ -67,7 +67,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
         <div className="p-3 border-t border-[color:var(--color-border)]">
-          <div className="hidden md:block mb-2 text-xs font-mono text-text-tertiary truncate">{user.email}</div>
+          <div className="hidden md:block mb-2 text-xs font-mono text-text-tertiary truncate">
+            {user.email || (user.walletAddress ? `${user.walletAddress.slice(0, 10)}...` : user.name || 'Admin')}
+          </div>
           <button onClick={() => { logout(); router.push('/admin/login'); }} className="w-full py-2 text-xs font-mono text-[#ff3860] border border-[#ff3860] rounded hover:bg-[rgba(255,56,96,0.1)] transition-colors hidden md:block">
             Sign Out
           </button>
@@ -83,7 +85,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <div className="flex items-center gap-3">
           <span className="px-3 py-1 bg-[rgba(255,56,96,0.1)] border border-[#ff3860] text-[#ff3860] rounded text-xs font-mono">ADMIN</span>
-          <div className="w-7 h-7 rounded-full bg-[#ff3860] flex items-center justify-center text-xs font-bold text-white">{user.name[0]}</div>
+          <div className="w-7 h-7 rounded-full bg-[#ff3860] flex items-center justify-center text-xs font-bold text-white">
+            {(user.name?.[0] || user.walletAddress?.[2] || 'A').toUpperCase()}
+          </div>
         </div>
       </header>
 

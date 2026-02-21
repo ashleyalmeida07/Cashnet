@@ -3,70 +3,129 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useSignMessage } from 'wagmi';
 import { useUIStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 
 export default function LenderSignupPage() {
   const router = useRouter();
-  const signup = useAuthStore((s) => s.signup);
-  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
-  const addToast = useUIStore((s) => s.addToast);
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const addToast = useUIStore((state) => state.addToast);
+  const loginWithWallet = useAuthStore((state) => state.loginWithWallet);
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!form.name) e.name = 'Institution name is required';
-    if (!form.email) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
-    if (!form.password) e.password = 'Password is required';
-    else if (form.password.length < 8) e.password = 'Minimum 8 characters';
-    if (form.password !== form.confirm) e.confirm = 'Passwords do not match';
-    return e;
-  };
+  const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validate();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    setLoading(true);
-    try {
-      await signup(form.email, form.password, form.name, 'LENDER');
-      addToast({ message: 'Lender account created!', severity: 'success' });
-      router.push('/lender');
-    } catch {
-      addToast({ message: 'Registration failed. Try again.', severity: 'error' });
-      setLoading(false);
+  const [institutionName, setInstitutionName] = useState('');
+  const [email, setEmail] = useState('');
+
+  // Handle wallet connection and signup
+  const handleSignup = async () => {
+    console.log('[LENDER SIGNUP] Starting signup process...');
+    console.log('[LENDER SIGNUP] Address:', address, 'Is Connected:', isConnected);
+
+    if (!address || !isConnected) {
+      addToast({
+        message: 'Please connect your wallet first',
+        severity: 'warning',
+      });
+      return;
     }
-  };
 
-  const handleGoogle = async () => {
-    setLoading(true);
     try {
-      await loginWithGoogle('LENDER');
-      addToast({ message: 'Welcome, Lender', severity: 'success' });
-      router.push('/lender');
-    } catch {
-      addToast({ message: 'Google authentication failed', severity: 'error' });
-      setLoading(false);
+      console.log('[LENDER SIGNUP] Fetching nonce for wallet:', address);
+      
+      // Get nonce from backend
+      const nonceResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/nonce`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: address }),
+      });
+
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to get authentication nonce');
+      }
+
+      const { message } = await nonceResponse.json();
+      console.log('[LENDER SIGNUP] Nonce received, requesting signature...');
+
+      // Request signature from user
+      const signature = await signMessageAsync({ message });
+      console.log('[LENDER SIGNUP] Signature obtained, authenticating with backend...');
+
+      // Authenticate with backend (signup + login in one step)
+      await loginWithWallet(address, signature, institutionName || undefined, email || undefined);
+
+      // Get updated user state after authentication
+      const authState = useAuthStore.getState();
+      console.log('[LENDER SIGNUP] Auth state after wallet login:', authState);
+
+      if (authState.isAuthenticated && authState.user) {
+        // Set user role to LENDER
+        authState.setUser({ ...authState.user, role: 'LENDER' });
+        console.log('[LENDER SIGNUP] User role updated to LENDER');
+
+        addToast({
+          message: `Welcome to cashnet lender portal, ${authState.user.name || 'Lender'}!`,
+          severity: 'success',
+        });
+        
+        console.log('[LENDER SIGNUP] Redirecting to lender dashboard...');
+        setTimeout(() => {
+          router.push('/lender');
+        }, 100);
+      } else {
+        console.error('[LENDER SIGNUP] User state not updated properly:', authState);
+        throw new Error('Authentication succeeded but user state not updated');
+      }
+    } catch (error) {
+      console.error('[LENDER SIGNUP] Signup error:', error);
+      addToast({
+        message: error instanceof Error ? error.message : 'Signup failed',
+        severity: 'error',
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-[color:var(--color-bg-primary)] grid grid-cols-1 md:grid-cols-2">
+      {/* Left Panel - Branding */}
       <div className="hidden md:flex flex-col justify-between p-8 bg-[color:var(--color-bg-secondary)] border-r border-[color:var(--color-border)]">
         <Link href="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#b367ff] rounded flex items-center justify-center text-sm font-bold text-white">LN</div>
           <span className="font-mono text-lg font-bold text-text-primary">cashnet <span className="text-[#b367ff]">lender</span></span>
         </Link>
+
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="text-xs font-mono text-text-tertiary uppercase tracking-wider">Institution Registration</div>
             <h2 className="text-2xl font-bold font-mono text-text-primary">Join as a Lender</h2>
             <p className="text-sm text-text-secondary font-mono">Register your institution to provide liquidity, issue loans, and earn yield in the simulation.</p>
           </div>
+
+          {/* Features */}
+          <div>
+            <h3 className="text-text-primary font-mono font-bold text-sm mb-3">What you get:</h3>
+            <ul className="space-y-2 text-text-secondary text-sm font-mono">
+              <li className="flex items-start gap-2">
+                <span className="text-[#b367ff]">◆</span>
+                <span>Non-custodial wallet authentication</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#b367ff]">◆</span>
+                <span>Manage liquidity positions</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#b367ff]">◆</span>
+                <span>Monitor loan portfolio & health</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#b367ff]">◆</span>
+                <span>Secure transaction approval</span>
+              </li>
+            </ul>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             {[{ v: '$2.4B', l: 'Total TVL' }, { v: '8.2%', l: 'Avg APY' }, { v: '12', l: 'Active Lenders' }, { v: '97.8%', l: 'Repayment Rate' }].map((s) => (
               <div key={s.l} className="p-3 bg-[color:var(--color-bg-primary)] border border-[color:var(--color-border)] rounded">
@@ -76,64 +135,216 @@ export default function LenderSignupPage() {
             ))}
           </div>
         </div>
+
         <div className="text-xs font-mono text-text-tertiary">
           Already registered? <Link href="/lender/login" className="text-[#b367ff] hover:underline">Sign in →</Link>
         </div>
       </div>
 
+      {/* Right Panel - Signup Form */}
       <div className="flex flex-col justify-center items-center p-8 md:p-12 overflow-y-auto">
         <div className="w-full max-w-sm space-y-6">
-          <div className="space-y-1 text-center">
-            <div className="w-12 h-12 bg-[#b367ff] rounded-lg flex items-center justify-center text-lg font-bold text-white mx-auto">LN</div>
-            <h1 className="text-2xl font-bold font-mono text-text-primary">Register as Lender</h1>
-            <p className="text-sm text-text-secondary font-mono">Create your institutional account</p>
+          {/* Mobile Logo */}
+          <Link href="/" className="md:hidden flex items-center gap-2 justify-center mb-4">
+            <div className="w-10 h-10 bg-[#b367ff] rounded flex items-center justify-center text-sm font-bold text-white">LN</div>
+            <span className="font-mono text-lg font-bold text-text-primary">cashnet <span className="text-[#b367ff]">lender</span></span>
+          </Link>
+
+          {/* Heading */}
+          <div className="text-center space-y-2">
+            <div className="text-5xl mb-2">🦊</div>
+            <h1 className="text-2xl font-bold font-mono text-text-primary">
+              Register as Lender
+            </h1>
+            <p className="text-text-secondary text-sm font-mono">
+              Connect MetaMask or any wallet to join as a lender
+            </p>
+            <div className="text-xs text-text-secondary font-mono mt-3 p-3 bg-[color:var(--color-bg-primary)] rounded border border-[color:var(--color-border)] text-left">
+              💡 <strong>MetaMask:</strong> Choose "Browser" for extension or "WalletConnect" for mobile QR
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {[
-              { id: 'name', label: 'Institution / Bank Name', type: 'text', placeholder: 'Acme Bank Ltd.' },
-              { id: 'email', label: 'Business Email', type: 'email', placeholder: 'ops@bank.com' },
-              { id: 'password', label: 'Password', type: 'password', placeholder: '••••••••' },
-              { id: 'confirm', label: 'Confirm Password', type: 'password', placeholder: '••••••••' },
-            ].map((f) => (
-              <div key={f.id}>
-                <label className="block text-xs font-mono text-text-secondary mb-1">{f.label}</label>
-                <input
-                  type={f.type}
-                  placeholder={f.placeholder}
-                  value={(form as Record<string, string>)[f.id]}
-                  onChange={(e) => setForm((p) => ({ ...p, [f.id]: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-[#b367ff] transition-colors"
-                />
-                {errors[f.id] && <p className="text-xs text-[#ff3860] font-mono mt-1">{errors[f.id]}</p>}
+          {/* Optional Profile Info */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="institutionName" className="block text-xs font-mono text-text-secondary">
+                Institution / Bank Name (Optional)
+              </label>
+              <input
+                id="institutionName"
+                type="text"
+                value={institutionName}
+                onChange={(e) => setInstitutionName(e.target.value)}
+                className="w-full px-3 py-2.5 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-[#b367ff] transition-colors"
+                placeholder="Acme Bank Ltd."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-xs font-mono text-text-secondary">
+                Business Email (Optional)
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2.5 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-[#b367ff] transition-colors"
+                placeholder="ops@bank.com"
+              />
+              <p className="text-xs text-text-tertiary font-mono">
+                Optional: for notifications and updates
+              </p>
+            </div>
+          </div>
+
+          {/* Wallet Connection */}
+          <div className="space-y-6">
+            <div className="flex flex-col items-center gap-4 p-8 border border-[color:var(--color-border)] rounded-lg bg-[color:var(--color-bg-secondary)]">
+              <div className="text-6xl mb-2">🦊</div>
+              <h3 className="text-lg font-bold font-mono text-text-primary">
+                Connect Your Wallet
+              </h3>
+              <p className="text-text-secondary text-sm font-mono text-center">
+                Sign up with MetaMask or any Ethereum wallet. No passwords needed!
+              </p>
+              
+              <div className="w-full mt-4">
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }: any) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus || authenticationStatus === 'authenticated');
+
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          style: {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <button
+                                onClick={openConnectModal}
+                                type="button"
+                                className="w-full py-3 bg-[#b367ff] hover:bg-[#9f4ef0] text-white rounded font-mono text-sm font-semibold transition-colors"
+                              >
+                                Connect Wallet
+                              </button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <button
+                                onClick={openChainModal}
+                                type="button"
+                                className="w-full py-3 border border-[#ff3860] text-[#ff3860] rounded font-mono text-sm font-semibold hover:bg-[rgba(255,56,96,0.1)] transition-colors"
+                              >
+                                Wrong network
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div className="flex flex-col gap-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={openChainModal}
+                                  type="button"
+                                  className="flex-1 py-2 text-xs border border-[color:var(--color-border)] rounded font-mono text-text-secondary hover:text-text-primary hover:border-[#b367ff] transition-colors"
+                                >
+                                  {chain.hasIcon && (
+                                    <div
+                                      style={{
+                                        background: chain.iconBackground,
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: 999,
+                                        overflow: 'hidden',
+                                        marginRight: 4,
+                                        display: 'inline-block',
+                                      }}
+                                    >
+                                      {chain.iconUrl && (
+                                        <img
+                                          alt={chain.name ?? 'Chain icon'}
+                                          src={chain.iconUrl}
+                                          style={{ width: 12, height: 12 }}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                  {chain.name}
+                                </button>
+
+                                <button
+                                  onClick={openAccountModal}
+                                  type="button"
+                                  className="flex-1 py-2 text-xs border border-[color:var(--color-border)] rounded font-mono text-text-secondary hover:text-text-primary hover:border-[#b367ff] transition-colors"
+                                >
+                                  {account.displayName}
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={handleSignup}
+                                type="button"
+                                className="w-full py-3 bg-[#b367ff] hover:bg-[#9f4ef0] text-white rounded font-mono text-sm font-semibold transition-colors"
+                              >
+                                Sign Up with Wallet
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
               </div>
-            ))}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[#b367ff] hover:bg-[#9f4ef0] text-white rounded font-mono text-sm font-semibold transition-colors disabled:opacity-60"
-            >
-              {loading ? 'Creating account...' : 'Create Lender Account'}
-            </button>
-          </form>
+            </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[color:var(--color-border)]" /></div>
-            <div className="relative flex justify-center text-xs"><span className="px-2 bg-[color:var(--color-bg-primary)] text-text-tertiary font-mono">or</span></div>
+            {/* Security Notice */}
+            <div className="bg-[rgba(179,103,255,0.05)] border border-[#b367ff] rounded-lg p-4">
+              <div className="flex gap-3">
+                <div className="text-[#b367ff] text-xl">🔒</div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold font-mono text-text-primary">
+                    Secure & Non-Custodial
+                  </h4>
+                  <ul className="text-xs text-text-secondary font-mono space-y-1">
+                    <li>• We never access your private keys</li>
+                    <li>• You approve all transactions in your wallet</li>
+                    <li>• Authentication is signature-based only</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <button onClick={handleGoogle} disabled={loading} className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white text-gray-800 rounded font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-60">
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Sign up with Google
-          </button>
-
+          {/* Sign In Link */}
           <div className="text-center text-xs font-mono text-text-tertiary">
-            Already have an account? <Link href="/lender/login" className="text-[#b367ff] hover:underline">Sign in</Link>
+            Already have an account?{' '}
+            <Link href="/lender/login" className="text-[#b367ff] hover:underline">Sign in</Link>
+            {' · '}
+            <Link href="/signup" className="text-accent hover:underline">Borrower signup</Link>
           </div>
         </div>
       </div>

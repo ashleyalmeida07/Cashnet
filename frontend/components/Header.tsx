@@ -88,11 +88,15 @@ const Header: React.FC<HeaderProps> = ({
           {user && (
             <div className="hidden sm:flex items-center gap-2 pl-3 pr-1.5 py-1.5 bg-[color:var(--color-bg-accent)] border border-[color:var(--color-border)] rounded hover:border-accent transition-colors group cursor-pointer">
               <div className="flex flex-col items-end text-right">
-                <span className="text-xs font-mono font-bold text-text-primary group-hover:text-accent">{user.name}</span>
-                <span className="text-xs font-mono text-text-tertiary">{user.email.split('@')[1]}</span>
+                <span className="text-xs font-mono font-bold text-text-primary group-hover:text-accent">
+                  {user.name || (user.walletAddress ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}` : 'User')}
+                </span>
+                <span className="text-xs font-mono text-text-tertiary">
+                  {user.email ? user.email.split('@')[1] : (user.walletAddress ? 'Wallet User' : user.role || 'User')}
+                </span>
               </div>
               <div className="w-6 h-6 rounded bg-accent/20 border border-accent flex items-center justify-center text-xs font-mono font-bold text-accent ml-2">
-                {user.name.charAt(0).toUpperCase()}
+                {(user.name?.charAt(0) || user.walletAddress?.charAt(2) || 'U').toUpperCase()}
               </div>
               <div className="absolute top-full right-0 mt-2 hidden group-hover:block bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded shadow-lg py-1 z-50 min-w-48">
                 <button
