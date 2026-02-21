@@ -63,15 +63,44 @@ class RetailTrader(BaseAgent):
             else 0.0
         )
 
+        # --- Get market-driven behavior modifier ---
+        aggression = getattr(self, '_market_aggression', 1.0)
+        
+        # --- Get real market sentiment if available ---
+        market_sentiment = "neutral"
+        real_btc_change = 0.0
+        if self.market_data:
+            try:
+                condition = self.market_data.get_market_condition()
+                market_sentiment = condition.sentiment
+                # Adjust panic threshold based on real market fear
+                if market_sentiment == "extreme_fear":
+                    self.panic_threshold_pct = 3.0  # More trigger-happy
+                elif market_sentiment == "bearish":
+                    self.panic_threshold_pct = 4.0
+                else:
+                    self.panic_threshold_pct = 5.0
+                    
+                # Get real BTC price change for sentiment
+                if hasattr(self.market_data, '_cache') and 'BTC' in self.market_data._cache:
+                    real_btc_change = self.market_data._cache['BTC'].change_pct_24h
+            except Exception:
+                pass
+
         # --- cooldown ---
         if self.cooldown_ticks > 0:
             self.cooldown_ticks -= 1
             return []
 
-        # --- panic sell check ---
-        if price_change_pct <= -self.panic_threshold_pct and self.position_size > 0:
+        # --- panic sell check (more likely during real market fear) ---
+        panic_trigger = price_change_pct <= -self.panic_threshold_pct
+        # Also panic if real BTC is crashing
+        if real_btc_change < -5 and self.position_size > 0:
+            panic_trigger = True
+            
+        if panic_trigger and self.position_size > 0:
             self.is_panicking = True
-            sell_amount = self.position_size * random.uniform(0.5, 1.0)
+            sell_amount = self.position_size * random.uniform(0.5, 1.0) * aggression
             sell_amount = min(sell_amount, self.current_value * 0.3)
 
             action = TradeAction(
@@ -81,7 +110,12 @@ class RetailTrader(BaseAgent):
                 token_in=self.position_token,
                 token_out="TOKEN_B" if self.position_token == "TOKEN_A" else "TOKEN_A",
                 amount=sell_amount,
-                metadata={"reason": "panic", "price_drop_pct": round(price_change_pct, 2)},
+                metadata={
+                    "reason": "panic",
+                    "price_drop_pct": round(price_change_pct, 2),
+                    "market_sentiment": market_sentiment,
+                    "real_btc_change": round(real_btc_change, 2),
+                },
             )
             actions.append(action)
 
@@ -95,6 +129,8 @@ class RetailTrader(BaseAgent):
             self.emit_event("panic_sell", {
                 "amount": sell_amount,
                 "price_drop_pct": round(price_change_pct, 2),
+                "market_sentiment": market_sentiment,
+                "real_btc_change_24h": round(real_btc_change, 2),
                 "receipt": receipt,
             })
 
@@ -115,8 +151,10 @@ class RetailTrader(BaseAgent):
         # --- normal random trading ---
         self.is_panicking = False
 
-        # ~60 % of ticks the retail trader does something
-        if random.random() > 0.6:
+        # Activity rate adjusted by market sentiment
+        # More active in bullish, less in bearish
+        activity_rate = 0.6 * aggression
+        if random.random() > activity_rate:
             return []
 
         trade_size = random.uniform(self.trade_min, self.trade_max)

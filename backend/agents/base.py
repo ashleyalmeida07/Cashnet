@@ -391,7 +391,9 @@ class BaseAgent(ABC):
         self.pool: Optional[PoolState] = None
         self.lending: Optional[LendingState] = None
         self.mempool: Optional[Mempool] = None
+        self.market_data: Optional[Any] = None  # MarketDataService instance
         self._event_callback: Optional[Callable] = None
+        self._market_aggression: float = 1.0  # Modifier based on real market conditions
 
     # -- lifecycle ----------------------------------------------------------
 

@@ -52,6 +52,33 @@ interface SimStatus {
     liquidatable_count: number;
     liquidation_count: number;
   };
+  market_data?: MarketData | null;
+}
+
+interface MarketData {
+  prices: Record<string, PriceInfo>;
+  condition: MarketCondition;
+  last_update: number;
+  source: string;
+}
+
+interface PriceInfo {
+  symbol: string;
+  price: number;
+  change_24h: number;
+  change_pct_24h: number;
+  high_24h: number;
+  low_24h: number;
+  volume_24h: number;
+  source: string;
+}
+
+interface MarketCondition {
+  sentiment: string;
+  volatility: string;
+  trend: string;
+  risk_level: number;
+  recommended_exposure: number;
 }
 
 interface FeedEvent {
@@ -206,6 +233,57 @@ export default function AgentsPage() {
           Multi-agent DeFi simulation — live chaos engine with fraud detection
         </p>
       </div>
+
+      {/* ── Real Market Data Banner ───────────────────────────────────── */}
+      {simStatus?.market_data && (
+        <div className="card p-4 bg-gradient-to-r from-[rgba(0,212,99,0.08)] to-[rgba(56,189,248,0.08)] border border-[color:var(--color-accent)] rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📡</span>
+              <h3 className="font-mono font-bold text-text-primary text-sm">LIVE MARKET DATA</h3>
+              <Badge variant={simStatus.market_data.source === 'coindesk' ? 'success' : 'medium'}>
+                {simStatus.market_data.source.toUpperCase()}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <SentimentBadge sentiment={simStatus.market_data.condition.sentiment} />
+              <Badge variant={
+                simStatus.market_data.condition.volatility === 'extreme' ? 'critical' :
+                simStatus.market_data.condition.volatility === 'high' ? 'high' : 'medium'
+              }>
+                {simStatus.market_data.condition.volatility.toUpperCase()} VOL
+              </Badge>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            {Object.entries(simStatus.market_data.prices).map(([symbol, price]) => (
+              <div key={symbol} className="bg-[color:var(--color-bg-primary)] rounded p-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-xs text-text-primary">{symbol}</span>
+                  <span className={`text-[10px] font-mono font-bold ${
+                    (price as PriceInfo).change_pct_24h >= 0 ? 'text-success' : 'text-danger'
+                  }`}>
+                    {(price as PriceInfo).change_pct_24h >= 0 ? '▲' : '▼'}
+                    {Math.abs((price as PriceInfo).change_pct_24h).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="text-sm font-mono text-accent font-bold">
+                  ${(price as PriceInfo).price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-between mt-3 text-[10px] font-mono text-text-tertiary">
+            <span>Trend: <span className="text-accent">{simStatus.market_data.condition.trend.toUpperCase()}</span></span>
+            <span>Risk Level: <span className={simStatus.market_data.condition.risk_level > 0.6 ? 'text-danger' : 'text-accent'}>
+              {(simStatus.market_data.condition.risk_level * 100).toFixed(0)}%
+            </span></span>
+            <span>Agents react to real price movements</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Agent Cards ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
@@ -565,5 +643,23 @@ function MiniStat({
       <div className="text-[10px] text-text-tertiary font-mono">{label}</div>
       <div className={`text-base font-bold font-mono text-${color}`}>{value}</div>
     </div>
+  );
+}
+
+function SentimentBadge({ sentiment }: { sentiment: string }) {
+  const config: Record<string, { emoji: string; color: string; label: string }> = {
+    extreme_fear: { emoji: '😱', color: 'critical', label: 'EXTREME FEAR' },
+    bearish: { emoji: '🐻', color: 'high', label: 'BEARISH' },
+    neutral: { emoji: '😐', color: 'medium', label: 'NEUTRAL' },
+    bullish: { emoji: '🐂', color: 'success', label: 'BULLISH' },
+    extreme_greed: { emoji: '🤑', color: 'success', label: 'EXTREME GREED' },
+  };
+  
+  const c = config[sentiment] || config.neutral;
+  
+  return (
+    <Badge variant={c.color as 'critical' | 'high' | 'medium' | 'success'}>
+      {c.emoji} {c.label}
+    </Badge>
   );
 }
