@@ -1,0 +1,830 @@
+﻿Rust-eze Simulation Lab — Complete To-Do & Feature List
+
+
+🛠️ Tech Stack
+LayerTechnologyFrontendNext.jsBackendFastAPI (Python)BlockchainSolidity + Testnet (Sepolia/Hardhat)AI EnginePython (scikit-learn, numpy)DatabasePostgreSQLBlockchain Interactionethers.js (frontend) + web3.py (backend)WalletMetaMask
+
+
+📁 Project Structure
+rust-eze-simulation-lab/
+├── frontend/          → Next.js
+├── backend/           → FastAPI
+├── contracts/         → Solidity Smart Contracts
+├── ai_engine/         → Python AI modules
+└── database/          → PostgreSQL schemas
+
+
+✅ COMPLETE TO-DO LIST
+
+
+MODULE 1 — Private Blockchain & Identity Layer
+What it does:
+Controls who can enter the simulation and what role they have. Every participant has a wallet address and a role assigned on-chain.
+To-Do:
+Smart Contracts (Solidity):
+
+
+ Write AccessControl.sol — assigns roles like ADMIN, LENDER, BORROWER, AUDITOR
+ Write IdentityRegistry.sol — registers and verifies wallet addresses
+ Implement onlyAdmin, onlyLender, onlyBorrower modifiers
+ Add pausable feature — admin can freeze all contracts in emergency
+ Deploy all contracts to Sepolia testnet
+
+
+Backend (FastAPI):
+
+
+ API endpoint to register a new participant wallet
+ API endpoint to assign roles to wallets
+ API endpoint to verify if a wallet is allowed to participate
+ Connect FastAPI to Sepolia using web3.py
+
+
+Frontend (Next.js):
+
+
+ MetaMask wallet connect button
+ Admin panel to register and assign roles to wallets
+ Display list of all registered participants with their roles
+ Show wallet address, role, and status on dashboard
+
+
+
+
+MODULE 2 — Liquidity Pool Simulation Engine
+What it does:
+Simulates an AMM trading pool (like Uniswap). Users add liquidity, traders swap tokens, and you stress test what happens under extreme conditions.
+To-Do:
+Smart Contracts (Solidity):
+
+
+ Write ERC20Token.sol — create two fake tokens (TokenA and TokenB) for trading
+ Write LiquidityPool.sol — AMM contract with x*y=k formula
+ Implement addLiquidity() function — users deposit token pairs
+ Implement removeLiquidity() function — users withdraw their share
+ Implement swap() function — trade TokenA for TokenB and vice versa
+ Emit events for every swap, deposit, withdrawal
+ Deploy to Sepolia testnet
+
+
+Backend (FastAPI):
+
+
+ API to add liquidity to the pool
+ API to remove liquidity from pool
+ API to execute a swap transaction
+ API to fetch current pool state (reserves, price, depth)
+ Stress test API — trigger mass withdrawal simulation
+ Calculate and return:
+
+
+Slippage at different trade sizes
+Liquidity depth at different price points
+Impermanent loss for liquidity providers
+Time-to-drain estimate under sustained pressure
+
+
+
+
+
+
+Frontend (Next.js):
+
+
+ Pool dashboard showing current reserves of TokenA and TokenB
+ Slippage curve chart (how slippage increases with trade size)
+ Liquidity depth chart
+ Stress test control panel — trigger mass withdrawal with one button
+ Real time pool metrics updating as simulation runs
+ Impermanent loss calculator UI
+
+
+
+
+MODULE 3 — Lending & Borrowing Protocol
+What it does:
+A full loan system on blockchain. Users lock collateral, borrow against it, pay interest, and get liquidated if their collateral value drops too much.
+To-Do:
+Smart Contracts (Solidity):
+
+
+ Write CollateralVault.sol — holds user collateral (ETH or tokens)
+ Write LendingPool.sol — manages loans and repayments
+ Implement depositCollateral() — user locks ETH as collateral
+ Implement borrow() — user borrows tokens against collateral
+ Implement repay() — user repays loan with interest
+ Implement liquidate() — triggers when collateral ratio drops below threshold
+ Implement interest rate curve (higher utilization = higher rate)
+ Emit events for every loan, repayment, liquidation
+ Deploy to Sepolia testnet
+
+
+Backend (FastAPI):
+
+
+ API to deposit collateral
+ API to take a loan
+ API to repay loan
+ API to check collateralization ratio of any wallet
+ API to trigger liquidation manually (for simulation)
+ Cascade simulation — drop price of collateral and watch chain reaction of liquidations
+ Calculate and return:
+
+
+Health factor per wallet
+Total protocol debt
+Liquidation waterfall (order of who gets liquidated first)
+Bad debt if liquidations fail
+
+
+
+
+
+
+Frontend (Next.js):
+
+
+ Borrower dashboard — show collateral, loan amount, health factor
+ Health factor indicator (green/yellow/red)
+ Liquidation risk table — list all wallets near liquidation threshold
+ Cascade simulation panel — simulate price crash and watch liquidations trigger
+ Interest rate curve chart
+ Protocol health overview (total deposits, total loans, utilization rate)
+
+
+
+
+MODULE 4 — Multi-Agent AI Simulation
+What it does:
+AI bots that act like real market participants. Each bot has a wallet, sends real transactions to your contracts, and behaves according to its type.
+To-Do:
+AI Engine (Python):
+
+
+ Build RetailTrader agent — makes small random trades, emotional behavior
+ Build WhaleAgent agent — makes large trades, moves the market
+ Build ArbitrageBot agent — detects price differences and exploits them
+ Build MEVBot agent — front runs pending transactions
+ Build Liquidator agent — hunts undercollateralized positions
+ Build Attacker agent — attempts flash loan attacks
+ Each agent has:
+
+
+Its own wallet with private key
+Configurable capital amount
+Configurable risk appetite (low/medium/high)
+Configurable reaction speed
+Transaction signing and sending via web3.py
+
+
+
+
+
+
+Backend (FastAPI):
+
+
+ API to start a simulation run with selected agents
+ API to configure each agent (capital, risk, speed)
+ API to stop/pause simulation
+ API to fetch real time agent activity log
+ API to get simulation summary after run completes
+ Record every agent transaction with timestamp and outcome
+
+
+Frontend (Next.js):
+
+
+ Agent configuration panel — pick agent types and set their parameters
+ Live agent activity feed — show what each bot is doing in real time
+ Simulation control panel — start, pause, stop buttons
+ Agent vs agent interaction chart
+ Post simulation report — what each agent did and outcome
+
+
+
+
+MODULE 5 — DeFi Fraud & Attack Detection AI
+What it does:
+An AI that watches all on-chain activity during simulation and flags suspicious behavior like flash loan attacks, wash trading, and price manipulation.
+To-Do:
+AI Engine (Python):
+
+
+ Build transaction monitor — reads all events from blockchain in real time
+ Detect wash trading — same wallet buying and selling repeatedly
+ Detect flash loan attack pattern — large borrow + manipulation + repay in same block
+ Detect oracle manipulation — price feed deviating abnormally
+ Detect liquidity poisoning — coordinated large deposits then sudden withdrawal
+ Detect pump and dump — coordinated price inflation then mass sell
+ Detect front running — MEV bot copying pending transactions
+ Assign severity score to each detected anomaly (Low / Medium / High / Critical)
+ Auto trigger contract pause if Critical attack detected
+
+
+Backend (FastAPI):
+
+
+ API to get all active alerts
+ API to get fraud detection history
+ API to manually flag a wallet as suspicious
+ API to get fraud score of a specific wallet
+ Webhook to trigger contract pause via web3.py when critical fraud detected
+
+
+Frontend (Next.js):
+
+
+ Live fraud alert feed with severity color coding
+ Fraud map — visual showing which wallets are connected suspiciously
+ Alert detail page — show exactly what pattern was detected and why
+ Contract status indicator — shows if contract is paused due to attack
+ Fraud analytics dashboard — total attacks detected, types, severity breakdown
+
+
+
+
+MODULE 6 — Dynamic Credit & Reputation Scoring
+What it does:
+Every wallet gets a credit score based on its behavior. The score automatically changes borrowing limits and interest rates in real time.
+To-Do:
+Smart Contracts (Solidity):
+
+
+ Write CreditRegistry.sol — stores credit score per wallet on chain
+ Implement score based borrowing limits — higher score = higher limit
+ Implement score based interest rates — lower score = higher interest
+ Implement score based collateral requirements — lower score = more collateral needed
+ Only backend (trusted oracle) can update scores on chain
+
+
+AI Engine (Python):
+
+
+ Build scoring model that tracks:
+
+
+Repayment history (did they repay on time?)
+Collateral management (did they maintain healthy ratio?)
+Exposure concentration (are they over leveraged?)
+Suspicious activity flags (did fraud detector flag them?)
+Transaction frequency and patterns
+
+
+
+
+ Score range: 300 (very risky) to 850 (very trustworthy)
+ Score updates in real time as simulation runs
+ Score changes trigger on-chain update via web3.py
+
+
+Backend (FastAPI):
+
+
+ API to get credit score of any wallet
+ API to get score history of a wallet over time
+ API to get current borrowing limit based on score
+ API to get interest rate based on score
+ Background job that recalculates scores every N seconds during simulation
+
+
+Frontend (Next.js):
+
+
+ Credit score dashboard per wallet
+ Score history chart (how score changed over simulation)
+ Score breakdown — show what factors affected the score
+ Leaderboard — ranked list of all wallets by credit score
+ Live score update feed — show score changes as they happen
+
+
+
+
+MODULE 7 — Audit Trail & Reporting
+What it does:
+Every single event during simulation is permanently recorded. After simulation ends, a full report is generated.
+To-Do:
+Backend (FastAPI):
+
+
+ Record every blockchain event to PostgreSQL database
+ API to export full simulation report as PDF or JSON
+ API to get timeline of events during simulation
+ API to compare two simulation runs
+
+
+Frontend (Next.js):
+
+
+ Simulation history page — list of all past simulations
+ Simulation detail page — full timeline of what happened
+ Export report button — download PDF audit report
+ Comparison view — side by side comparison of two simulations
+
+
+
+
+🗓️ Build Order (Step by Step)
+WEEK 1 — Foundation
+├── Set up Hardhat local chain
+├── Deploy ERC20 tokens to Sepolia
+├── Build AccessControl + IdentityRegistry contracts
+└── Connect Next.js + FastAPI + web3.py
+
+
+WEEK 2 — Core DeFi Contracts
+├── Build LiquidityPool contract
+├── Build LendingPool + CollateralVault contracts
+├── Build CreditRegistry contract
+└── Test all contracts on Sepolia
+
+
+WEEK 3 — AI Agents
+├── Build all 6 agent types in Python
+├── Connect agents to Sepolia via web3.py
+└── Run first full simulation with agents
+
+
+WEEK 4 — Fraud Detection + Credit Scoring
+├── Build fraud detection AI
+├── Build credit scoring model
+└── Connect both to blockchain events
+
+
+WEEK 5 — Frontend Dashboard
+├── Build all dashboard pages in Next.js
+├── Connect to FastAPI backend
+└── Real time charts and feeds
+
+
+WEEK 6 — Testing & Polish
+├── Run full stress test simulations
+├── Fix bugs and edge cases
+└── Generate audit reports
+
+
+
+
+
+
+
+
+
+
+
+
+Response :- 02
+
+
+Rust-eze Simulation Lab — 20 Hour Implementation Plan
+4 People, Separate Responsibilities
+________________
+
+
+👥 Team Roles
+Person
+	Role
+	Stack
+	Person 1
+	Blockchain Developer
+	Solidity + Hardhat + Sepolia
+	Person 2
+	AI & Backend Developer
+	Python + FastAPI + web3.py
+	Person 3
+	AI & Simulation Developer
+	Python + AI Agents + Fraud Detection
+	Person 4
+	Frontend Developer
+	Next.js + ethers.js + Charts
+	________________
+
+
+⏰ HOUR BY HOUR PLAN
+________________
+
+
+🟡 HOURS 1-2 — Setup & Foundation (All 4 Together)
+Everyone Does This First (2 hours)
+* [ ] Create GitHub repository with folder structure
+* [ ] Setup project structure:
+rust-eze-lab/
+├── contracts/     → Person 1
+├── backend/       → Person 2
+├── ai_engine/     → Person 3
+└── frontend/      → Person 4
+
+
+* [ ] Person 1 sets up Hardhat project
+* [ ] Person 2 sets up FastAPI project
+* [ ] Person 3 sets up Python AI environment
+* [ ] Person 4 sets up Next.js project
+* [ ] Everyone connects to same GitHub repo
+* [ ] Agree on API contract (what endpoints backend will expose)
+* [ ] Agree on smart contract addresses after deployment
+________________
+
+
+🔵 HOURS 3-7 — Core Development Phase 1
+________________
+
+
+👷 Person 1 — Blockchain Developer
+Hours 3-7 (5 hours)
+Hour 3 — Token & Access Contracts
+* [ ] Write AccessControl.sol
+contract AccessControl {
+    mapping(address => string) public roles;
+    address public admin;
+
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Not admin");
+        _;
+    }
+
+
+    function assignRole(address wallet, string memory role) public onlyAdmin {
+        roles[wallet] = role;
+    }
+}
+
+
+* [ ] Write SimToken.sol (ERC20 fake token for simulation)
+* [ ] Deploy both to Sepolia testnet
+* [ ] Share contract addresses with team
+Hour 4 — Liquidity Pool Contract
+* [ ] Write LiquidityPool.sol
+* [ ] Implement addLiquidity(), removeLiquidity(), swap()
+* [ ] Implement x*y=k AMM formula
+* [ ] Add events for every action
+* [ ] Deploy to Sepolia
+Hour 5 — Lending Contract
+* [ ] Write LendingPool.sol
+* [ ] Implement depositCollateral(), borrow(), repay()
+* [ ] Implement health factor calculation
+* [ ] Implement liquidate() function
+* [ ] Deploy to Sepolia
+Hour 6 — Credit Registry Contract
+* [ ] Write CreditRegistry.sol
+* [ ] Store credit score per wallet on chain
+* [ ] Only trusted backend address can update scores
+* [ ] Score affects borrowing limit automatically
+* [ ] Deploy to Sepolia
+Hour 7 — Testing All Contracts
+* [ ] Test all contracts on Sepolia using Hardhat scripts
+* [ ] Write deployment script that deploys everything in order
+* [ ] Share all final contract addresses + ABI files with team
+* [ ] Fix any bugs found in testing
+________________
+
+
+🧠 Person 2 — AI & Backend Developer
+Hours 3-7 (5 hours)
+Hour 3 — FastAPI Setup & Database
+* [ ] Setup FastAPI project structure
+* [ ] Setup PostgreSQL database
+* [ ] Create tables:
+   * participants (wallet, role, score)
+   * transactions (hash, type, amount, timestamp)
+   * alerts (type, severity, wallet, timestamp)
+   * simulations (id, start time, end time, summary)
+* [ ] Connect FastAPI to database
+Hour 4 — Blockchain Connection
+* [ ] Connect FastAPI to Sepolia using web3.py
+* [ ] Load contract ABIs from Person 1
+* [ ] Write helper functions to:
+   * Read contract state
+   * Send transactions
+   * Listen to contract events
+* [ ] Test connection with simple read call
+Hour 5 — Participant & Pool APIs
+* [ ] Build participant registration endpoint
+@app.post("/register")
+async def register_wallet(wallet: str, role: str):
+    # assign role on chain via web3.py
+    # save to database
+    return {"status": "registered"}
+
+
+* [ ] Build pool state endpoint
+* [ ] Build add/remove liquidity endpoints
+* [ ] Build swap endpoint
+Hour 6 — Lending APIs
+* [ ] Build deposit collateral endpoint
+* [ ] Build borrow endpoint
+* [ ] Build repay endpoint
+* [ ] Build health factor check endpoint
+* [ ] Build liquidation trigger endpoint
+* [ ] Build cascade simulation endpoint (drops price and watches liquidations)
+Hour 7 — Credit Score APIs
+* [ ] Build get credit score endpoint
+* [ ] Build score history endpoint
+* [ ] Build background job that recalculates scores every 10 seconds
+* [ ] Connect score updates to blockchain via web3.py
+* [ ] Test all APIs with Postman
+________________
+
+
+🤖 Person 3 — AI & Simulation Developer
+Hours 3-7 (5 hours)
+Hour 3 — Base Agent Framework
+* [ ] Create base Agent class in Python
+class Agent:
+    def __init__(self, name, wallet, private_key, capital):
+        self.name = name
+        self.wallet = wallet
+        self.capital = capital
+        self.w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC))
+    
+    def sign_and_send(self, transaction):
+        signed = self.w3.eth.account.sign_transaction(
+            transaction, self.private_key
+        )
+        return self.w3.eth.send_raw_transaction(signed.rawTransaction)
+
+
+* [ ] Setup 10 test wallets with Sepolia ETH for agents
+* [ ] Create agent configuration file (JSON)
+Hour 4 — Build Agent Types
+* [ ] Build RetailTrader — small random swaps every few seconds
+* [ ] Build WhaleAgent — large trades that move pool price
+* [ ] Build ArbitrageBot — detects price difference and exploits it
+* [ ] Build LiquidatorBot — monitors health factors and liquidates
+* [ ] Each agent connects to contracts deployed by Person 1
+Hour 5 — Attack Agents & Simulation Runner
+* [ ] Build AttackerAgent — simulates flash loan attack pattern
+* [ ] Build MEVBot — front runs other transactions
+* [ ] Build SimulationRunner class:
+   * Starts all agents simultaneously
+   * Runs for configured duration
+   * Records all agent actions to log file
+   * Sends logs to Person 2's backend API
+Hour 6 — Fraud Detection AI
+* [ ] Build transaction monitor (reads blockchain events in real time)
+* [ ] Detect wash trading pattern
+* [ ] Detect flash loan attack pattern
+* [ ] Detect liquidity poisoning pattern
+* [ ] Detect pump and dump pattern
+* [ ] Assign severity score to each detection
+Hour 7 — Credit Scoring Model
+* [ ] Build scoring model using wallet behavior data
+* [ ] Score based on:
+   * Repayment history
+   * Collateral ratio maintenance
+   * Suspicious activity flags
+   * Transaction patterns
+* [ ] Output score 300-850 per wallet
+* [ ] Send score updates to Person 2's API every 10 seconds
+________________
+
+
+🎨 Person 4 — Frontend Developer
+Hours 3-7 (5 hours)
+Hour 3 — Next.js Setup & Wallet Connect
+* [ ] Setup Next.js project with Tailwind CSS
+* [ ] Install ethers.js
+* [ ] Build wallet connect component with MetaMask
+* [ ] Build navigation sidebar with all module links
+* [ ] Setup API client to connect to Person 2's FastAPI
+Hour 4 — Dashboard & Identity Pages
+* [ ] Build main dashboard page with overview metrics
+* [ ] Build participant registration page
+* [ ] Build role management page (admin assigns roles)
+* [ ] Build participants list page showing all wallets and roles
+Hour 5 — Pool & Lending Pages
+* [ ] Build liquidity pool dashboard:
+   * Show pool reserves
+   * Add/remove liquidity form
+   * Swap form
+* [ ] Build lending dashboard:
+   * Collateral deposit form
+   * Borrow form
+   * Health factor indicator (green/yellow/red bar)
+   * Liquidation risk table
+Hour 6 — Simulation & Charts
+* [ ] Build simulation control panel:
+   * Agent configuration sliders
+   * Start/Stop/Pause buttons
+   * Live agent activity feed
+* [ ] Build charts using Chart.js or Recharts:
+   * Pool reserves over time
+   * Slippage curve
+   * Liquidation cascade chart
+   * Credit score history chart
+Hour 7 — Fraud & Credit Pages
+* [ ] Build fraud alert feed with color coded severity
+* [ ] Build credit score dashboard per wallet
+* [ ] Build score leaderboard
+* [ ] Build audit trail page showing all events
+* [ ] Connect all pages to live FastAPI data
+________________
+
+
+🟢 HOURS 8-14 — Integration Phase
+________________
+
+
+👷 Person 1 — Hours 8-14
+Blockchain Integration & Support
+Hour
+	Task
+	Hour 8
+	Help team integrate contract ABIs into frontend and backend
+	Hour 9
+	Write Hardhat scripts to auto-fund agent wallets with test ETH
+	Hour 10
+	Add oracle price feed simulation to lending contract
+	Hour 11
+	Implement emergency pause on fraud detection trigger
+	Hour 12
+	Write on-chain liquidation cascade logic
+	Hour 13
+	Test all contracts under stress (mass transactions)
+	Hour 14
+	Fix any contract bugs found during integration
+	________________
+
+
+🧠 Person 2 — Hours 8-14
+Backend Integration & APIs
+Hour
+	Task
+	Hour 8
+	Connect all APIs to real contract data from Person 1
+	Hour 9
+	Build real time event listener (blockchain → database)
+	Hour 10
+	Build cascade simulation endpoint (price crash → liquidations)
+	Hour 11
+	Build stress test endpoint (mass withdrawal simulation)
+	Hour 12
+	Build audit report generator (full simulation summary)
+	Hour 13
+	Add WebSocket support for real time frontend updates
+	Hour 14
+	Test all APIs end to end with real Sepolia transactions
+	________________
+
+
+🤖 Person 3 — Hours 8-14
+AI Integration & Testing
+Hour
+	Task
+	Hour 8
+	Connect all agents to real deployed contracts
+	Hour 9
+	Run first full simulation with all agent types
+	Hour 10
+	Fine tune agent behavior based on simulation results
+	Hour 11
+	Connect fraud detector to Person 2's alert API
+	Hour 12
+	Connect credit scorer to Person 2's score API
+	Hour 13
+	Test attacker agent vs fraud detector (can it be caught?)
+	Hour 14
+	Generate simulation analytics and send to backend
+	________________
+
+
+🎨 Person 4 — Hours 8-14
+Frontend Integration
+Hour
+	Task
+	Hour 8
+	Connect all pages to live FastAPI endpoints
+	Hour 9
+	Add WebSocket connection for real time updates
+	Hour 10
+	Make charts update live during simulation
+	Hour 11
+	Build real time fraud alert popup notifications
+	Hour 12
+	Build simulation results page with full summary
+	Hour 13
+	Add export report button (PDF download)
+	Hour 14
+	Polish UI — fix layouts, colors, responsiveness
+	________________
+
+
+🔴 HOURS 15-18 — Full System Testing
+________________
+
+
+All 4 People Together
+Hour 15 — First Full Run
+* [ ] Run complete simulation end to end
+* [ ] All agents active simultaneously
+* [ ] Watch blockchain transactions on Sepolia explorer
+* [ ] Check fraud alerts firing correctly
+* [ ] Check credit scores updating in real time
+* [ ] Note all bugs found
+Hour 16 — Stress Test
+* [ ] Trigger mass liquidity withdrawal
+* [ ] Simulate collateral price crash
+* [ ] Watch cascade liquidations trigger
+* [ ] Check if fraud detector catches attack agents
+* [ ] Verify contract pause works on critical attack
+* [ ] Record all metrics
+Hour 17 — Bug Fixes
+Person
+	Fix Focus
+	Person 1
+	Contract bugs, failed transactions
+	Person 2
+	API errors, database issues
+	Person 3
+	Agent behavior bugs, false fraud alerts
+	Person 4
+	UI bugs, broken charts, failed API calls
+	Hour 18 — Final Integration Check
+* [ ] Run one clean simulation with no bugs
+* [ ] Verify audit trail captures everything
+* [ ] Generate final simulation report
+* [ ] All team members review final product
+________________
+
+
+🏁 HOURS 19-20 — Demo Preparation
+Hour 19 — Demo Script
+* [ ] Prepare demo scenario:
+   1. Register participants with roles
+   2. Add liquidity to pool
+   3. Deposit collateral and take loans
+   4. Start simulation with all agents
+   5. Trigger price crash → watch liquidations cascade
+   6. Watch fraud detector catch attack agent
+   7. Show credit scores dropping for bad actors
+   8. Show audit trail of everything that happened
+Hour 20 — Final Polish & Presentation
+* [ ] Clean up UI for demo
+* [ ] Prepare 2 minute explanation of each module
+* [ ] Make sure Sepolia testnet has enough test ETH
+* [ ] Do one full dry run of demo
+* [ ] Everyone knows what to present
+________________
+
+
+📊 Summary Table
+Hours
+	Person 1
+	Person 2
+	Person 3
+	Person 4
+	1-2
+	Setup
+	Setup
+	Setup
+	Setup
+	3-7
+	Smart Contracts
+	FastAPI + APIs
+	AI Agents
+	Next.js UI
+	8-14
+	Contract Support
+	Backend Integration
+	AI Integration
+	Frontend Integration
+	15-16
+	Stress Testing
+	Stress Testing
+	Stress Testing
+	Stress Testing
+	17
+	Contract Fixes
+	API Fixes
+	AI Fixes
+	UI Fixes
+	18-20
+	Demo Prep
+	Demo Prep
+	Demo Prep
+	Demo Prep
+	________________
+
+
+🔗 How Everyone Connects
+Person 1 (Blockchain)
+    → Shares ABI files + Contract addresses with everyone
+
+
+Person 2 (Backend)
+    → Shares API docs with Person 3 and Person 4
+    → Reads blockchain via web3.py
+    → Receives AI data from Person 3
+
+
+Person 3 (AI)
+    → Sends transactions to blockchain directly
+    → Sends fraud alerts + scores to Person 2 API
+
+
+Person 4 (Frontend)
+    → Reads everything from Person 2 API
+    → Connects wallet directly to blockchain via ethers.js
+
+
+This is your complete 20 hour battle plan. Want me to start writing the actual code for any person's work?

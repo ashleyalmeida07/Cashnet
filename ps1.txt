@@ -1,0 +1,322 @@
+============================================================
+BLOCKCHAIN PROBLEM STATEMENT 1 – RUZT-EZE SIMULATION LAB
+============================================================
+
+OVERVIEW
+--------
+Ruzt-eze Simulation Lab is a conceptual platform designed to act as a
+“crash-testing laboratory” for DeFi protocols. Just like high-performance
+race cars are tested under extreme conditions before being allowed on real
+roads, DeFi protocols should be tested under adversarial and volatile
+market scenarios before real-world deployment.
+
+Current DeFi ecosystems often launch protocols without sufficient
+stress-testing. This leads to liquidity drains, cascading liquidations,
+stablecoin de-pegging, oracle manipulation, and exploit-based failures.
+Additionally, most DeFi platforms are fully public and transparent,
+making them vulnerable to MEV and front-running, while offering no
+private or permissioned testing environments for institutional users.
+
+The goal of PS1 is to build an AI-augmented, private or hybrid DeFi
+risk and liquidity simulation platform that enables teams to simulate,
+analyze, and audit protocol behavior before mainnet deployment.
+
+
+============================================================
+CORE OBJECTIVE
+------------------------------------------------------------
+Design and implement a platform that allows protocol designers to:
+
+• Deploy permissioned or hybrid DeFi smart contracts
+• Simulate extreme market stress conditions
+• Model liquidity exits and liquidation cascades
+• Run multi-agent adversarial market behavior
+• Detect fraud and exploit patterns
+• Generate measurable risk metrics and audit trails
+
+This platform should function as a FINANCIAL INTELLIGENCE LAB,
+not a production DeFi protocol.
+
+
+============================================================
+SYSTEM MENTAL MODEL
+------------------------------------------------------------
+The system consists of THREE CORE LAYERS:
+
+1. DeFi Execution Layer (On-chain)
+2. Market & Risk Simulation Engine (Off-chain)
+3. Control, Analytics & Visualization Dashboard
+
+
+============================================================
+1. PRIVATE DEFI EXECUTION LAYER
+------------------------------------------------------------
+Purpose:
+--------
+To simulate institutional-grade DeFi environments with controlled access.
+
+Key Concepts:
+-------------
+• Permissioned access (not fully public)
+• Role-based execution
+• Compliance-friendly structure
+
+Implementation Requirements:
+-----------------------------
+• Smart contracts deployed on a public testnet (Sepolia)
+• Role-based access using wallet whitelisting
+• Identity-bound participation (simulated via roles)
+
+Roles:
+------
+• Admin – deploys contracts, assigns roles
+• Institutional Lender – provides liquidity
+• Borrower – borrows against collateral
+• Auditor – read-only risk observer
+
+Important Note:
+---------------
+Privacy here means PERMISSIONED ACCESS, not private blockchain.
+Only approved wallets can interact with protocol logic.
+
+
+============================================================
+2. LIQUIDITY POOL SIMULATION ENGINE
+------------------------------------------------------------
+Purpose:
+--------
+To evaluate AMM behavior under liquidity stress.
+
+What is Simulated:
+------------------
+• Rapid liquidity withdrawals
+• Large trade slippage
+• Pool imbalance
+• Volatility spikes
+• Time-to-drain scenarios
+
+Simulation Characteristics:
+---------------------------
+• Executed OFF-CHAIN
+• Based on AMM mathematical models
+• Driven by stress parameters
+
+Key Metrics Generated:
+---------------------
+• Slippage curves
+• Liquidity depth changes
+• Impermanent loss exposure
+• Time-to-drain measurement
+
+Important:
+----------
+AMM math and stress modeling should be done in a simulation engine
+(Python), not fully on-chain.
+
+
+============================================================
+3. LENDING & BORROWING PROTOCOL MODELING
+------------------------------------------------------------
+Purpose:
+--------
+To simulate how lending markets behave under adverse conditions.
+
+What is Modeled:
+----------------
+• Collateral ratios
+• Liquidation thresholds
+• Borrowing caps
+• Interest behavior (simplified)
+
+Simulation Logic:
+-----------------
+• Track borrower collateral value
+• Monitor price changes
+• Detect under-collateralization
+• Trigger partial or full liquidation
+
+Expected Outputs:
+-----------------
+• Liquidation events
+• Cascade effects
+• Borrower risk exposure
+
+Scope Control:
+--------------
+• Single collateral asset is sufficient
+• Simple liquidation rules are acceptable
+• Real oracles are NOT required (mock prices allowed)
+
+
+============================================================
+4. MULTI-AGENT MARKET SIMULATION
+------------------------------------------------------------
+Purpose:
+--------
+To simulate realistic market behavior using multiple actor types.
+
+Agent Types:
+------------
+• Retail Trader – small volume, slow reactions
+• Whale – large volume, aggressive moves
+• Arbitrage Bot – fast, price-difference driven
+• Liquidator – profit-driven liquidation agent
+• MEV Actor – front-running / timing-based behavior
+
+Implementation Approach:
+------------------------
+• Rule-based behavioral agents
+• Configurable parameters:
+  - Risk appetite
+  - Reaction speed
+  - Capital size
+
+Important:
+----------
+Rule-based logic is acceptable and valid as “AI-driven behavioral modeling”
+for hackathon-level implementations.
+
+
+============================================================
+5. DEFI FRAUD & ATTACK DETECTION
+------------------------------------------------------------
+Purpose:
+--------
+To identify exploit-like behavior before real-world exposure.
+
+Attack Patterns to Detect:
+--------------------------
+• Flash loan attacks
+• Wash trading
+• Oracle manipulation
+• Liquidity poisoning
+• Coordinated pump-dump behavior
+
+Detection Method:
+-----------------
+• Anomaly detection
+• Rule-based alerts
+• Threshold-based triggers
+
+Example Alerts:
+---------------
+• Sudden borrow and repay in same block
+• Abnormal volume spikes
+• Rapid price deviation warnings
+
+
+============================================================
+6. DYNAMIC CREDIT & REPUTATION SCORING
+------------------------------------------------------------
+Purpose:
+--------
+To simulate institutional risk scoring.
+
+What is Tracked:
+----------------
+• Repayment behavior
+• Liquidation history
+• Collateral management
+• Exposure concentration
+
+How Scores Are Used:
+--------------------
+• Adjust borrowing limits
+• Modify interest rates
+• Change collateral requirements
+
+Implementation:
+---------------
+• Simple numerical credit score (e.g., 0–100)
+• Updated in real-time during simulation
+
+
+============================================================
+7. RISK METRICS & AUDIT TRAILS
+------------------------------------------------------------
+Purpose:
+--------
+To provide measurable, explainable insights.
+
+Metrics Examples:
+-----------------
+• Liquidity stress index
+• Protocol stability score
+• Liquidation cascade count
+• Recovery time after shock
+
+Audit Trail:
+------------
+• Smart contract events
+• Simulation logs
+• Timestamped actions
+
+This data is critical for judge evaluation.
+
+
+============================================================
+TECH STACK (RECOMMENDED)
+------------------------------------------------------------
+Frontend:
+---------
+• Next.js
+• Tailwind CSS
+• Chart.js / Recharts
+
+Simulation Engine:
+------------------
+• Python
+• FastAPI
+• NumPy
+• Pandas
+
+Blockchain:
+-----------
+• Solidity
+• Sepolia ETH Testnet
+• MetaMask
+• Alchemy RPC
+
+Data Storage:
+-------------
+• In-memory / JSON logs
+• SQLite (optional)
+
+
+============================================================
+WHAT TO MOCK VS WHAT TO BUILD
+------------------------------------------------------------
+Build:
+------
+• Permissioned smart contracts
+• AMM & lending logic (simplified)
+• Simulation engine
+• Dashboard visualization
+• Risk metrics
+
+Mock:
+-----
+• Oracle prices
+• Institutional KYC
+• Advanced AI training
+• Governance mechanisms
+
+
+============================================================
+WHAT A “COMPLETE” PS1 PROJECT MEANS
+------------------------------------------------------------
+• User defines stress scenario
+• Simulation engine runs
+• Agents react
+• Liquidity drains
+• Liquidations trigger
+• Fraud alerts appear
+• Metrics are visualized
+• Audit trail is available
+
+This satisfies FULL PS1 REQUIREMENTS.
+
+
+============================================================
+END OF FILE
+============================================================
