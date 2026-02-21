@@ -1,4 +1,4 @@
-"""
+﻿"""
 Firebase Auth authentication for Admin and Auditor roles.
 Both roles share the `adminandauditor` table, differentiated by the `role` column.
 Anyone not provisioned in that table is rejected with a 403.
@@ -16,7 +16,7 @@ from models import AdminAuditor, AdminAuditorRoleEnum
 from config import settings
 import os
 
-# ─── Firebase Admin SDK init (once per process) ─────────────────────────────
+# â”€â”€â”€ Firebase Admin SDK init (once per process) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if not firebase_admin._apps:
     # Uses GOOGLE_APPLICATION_CREDENTIALS env var pointing to service account JSON
     try:
@@ -34,7 +34,7 @@ if not firebase_admin._apps:
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# ─── Schemas ────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Schemas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class GoogleTokenRequest(BaseModel):
     credential: str          # Google ID token from frontend
@@ -58,21 +58,21 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
-# ─── JWT helpers ────────────────────────────────────────────────────────────
+# â”€â”€â”€ JWT helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def create_jwt(payload: dict) -> str:
     data = payload.copy()
     data["exp"] = datetime.utcnow() + timedelta(hours=12)
     return jwt.encode(data, settings.jwt_secret, algorithm="HS256")
 
-# ─── Routes ─────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @router.post("/google", response_model=UserOut)
 def google_login(body: GoogleTokenRequest, db: Session = Depends(get_db)):
     """
     Verify Google ID token. Lookup UID in adminandauditor table.
-    - If found   → return user + JWT
-    - If missing → 403 "Admin or Auditor access only"
+    - If found   â†’ return user + JWT
+    - If missing â†’ 403 "Admin or Auditor access only"
     """
     # 1. Verify Firebase ID token
     try:
@@ -160,3 +160,4 @@ def list_admin_auditors(db: Session = Depends(get_db)):
         {"uid": r.uid, "email": r.email, "name": r.name, "role": r.role.value, "created_at": r.created_at}
         for r in records
     ]
+

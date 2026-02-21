@@ -11,6 +11,7 @@ const adminNav = [
   { href: '/admin/participants', label: 'Participants', icon: '⊙' },
   { href: '/admin/contracts', label: 'Contracts', icon: '◈' },
   { href: '/admin/simulation', label: 'Simulation', icon: '≈' },
+  { href: '/admin/agents', label: 'Agents', icon: '◈' },
   { href: '/admin/threats', label: 'Threats', icon: '⚠' },
   { href: '/admin/credit', label: 'Credit', icon: '✓' },
   { href: '/admin/audit', label: 'Audit Log', icon: '◆' },
@@ -83,7 +84,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <div className="flex items-center gap-3">
           <span className="px-3 py-1 bg-[rgba(255,56,96,0.1)] border border-[#ff3860] text-[#ff3860] rounded text-xs font-mono">ADMIN</span>
-          <div className="w-7 h-7 rounded-full bg-[#ff3860] flex items-center justify-center text-xs font-bold text-white">{user.name[0]}</div>
+          <div className="w-7 h-7 rounded-full bg-[#ff3860] flex items-center justify-center text-xs font-bold text-white">{user.name?.[0] || 'A'}</div>
         </div>
       </header>
 

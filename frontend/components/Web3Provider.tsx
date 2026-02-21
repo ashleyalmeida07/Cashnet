@@ -1,0 +1,80 @@
+'use client';
+
+import '@rainbow-me/rainbowkit/styles.css';
+import { RainbowKitProvider, darkTheme, connectorsForWallets } from '@rainbow-me/rainbowkit';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { mainnet, sepolia, polygon, optimism, arbitrum } from 'wagmi/chains';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { ReactNode, useState } from 'react';
+import {
+  metaMaskWallet,
+  rainbowWallet,
+  walletConnectWallet,
+  coinbaseWallet,
+  trustWallet,
+} from '@rainbow-me/rainbowkit/wallets';
+
+// Configure connectors with MetaMask QR support
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Recommended',
+      wallets: [
+        metaMaskWallet,
+        rainbowWallet,
+        walletConnectWallet,
+        coinbaseWallet,
+        trustWallet,
+      ],
+    },
+  ],
+  {
+    appName: 'Cashnet',
+    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
+  }
+);
+
+// Configure wagmi without MetaMask (wagmi 2.x compatible)
+const config = createConfig({
+  connectors,
+  chains: [mainnet, sepolia, polygon, optimism, arbitrum],
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+    [polygon.id]: http(),
+    [optimism.id]: http(),
+    [arbitrum.id]: http(),
+  },
+});
+
+interface Web3ProviderProps {
+  children: ReactNode;
+}
+
+export function Web3Provider({ children }: Web3ProviderProps) {
+  // Create query client per component instance to avoid hydration issues
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: false,
+      },
+    },
+  }));
+
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider 
+          theme={darkTheme({
+            accentColor: '#10b981',
+            accentColorForeground: 'white',
+            borderRadius: 'medium',
+          })}
+        >
+          {children}
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}

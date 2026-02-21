@@ -57,6 +57,14 @@ export const simulationApi = {
   getFraudStats: () => apiRequest('/api/sim/fraud/stats'),
 };
 
+/* === MARKET DATA API (Real-time from CoinDesk) === */
+export const marketApi = {
+  getAllPrices: () => apiRequest('/agents-sim/market/prices'),
+  getPrice: (symbol: string) => apiRequest(`/agents-sim/market/price/${symbol}`),
+  getCondition: () => apiRequest('/agents-sim/market/condition'),
+  getAll: () => apiRequest('/agents-sim/market/all'),
+};
+
 /* === AGENT API === */
 export const agentApi = {
   listAgents: () => apiRequest('/api/agents'),

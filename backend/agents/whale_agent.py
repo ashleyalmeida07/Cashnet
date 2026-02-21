@@ -51,16 +51,53 @@ class WhaleAgent(BaseAgent):
             self.trade_cooldown -= 1
             return []
 
-        # Whales only act ~30 % of ticks
-        if random.random() > 0.30:
+        # --- Get market-driven behavior modifier ---
+        aggression = getattr(self, '_market_aggression', 1.0)
+        
+        # --- Get real market conditions ---
+        market_sentiment = "neutral"
+        volatility = "medium"
+        real_btc_price = 0.0
+        if self.market_data:
+            try:
+                condition = self.market_data.get_market_condition()
+                market_sentiment = condition.sentiment
+                volatility = condition.volatility
+                
+                # Get real BTC price
+                if hasattr(self.market_data, '_cache') and 'BTC' in self.market_data._cache:
+                    real_btc_price = self.market_data._cache['BTC'].price
+                    
+                # Whales love volatility - increase trading
+                if volatility == "extreme":
+                    aggression *= 1.5
+                elif volatility == "high":
+                    aggression *= 1.25
+            except Exception:
+                pass
+
+        # Whales activity rate adjusted by aggression
+        activity_rate = 0.30 * aggression
+        if random.random() > activity_rate:
             return []
 
         action_roll = random.random()
 
         if action_roll < 0.65:
             # --- large swap ---
-            pct = random.uniform(self.min_trade_pct, self.max_trade_pct)
-            token_in = random.choice(["TOKEN_A", "TOKEN_B"])
+            # Adjust trade size based on market volatility
+            min_pct = self.min_trade_pct * aggression
+            max_pct = self.max_trade_pct * aggression
+            pct = random.uniform(min_pct, max_pct)
+            
+            # Whales buy fear, sell greed (contrarian)
+            if market_sentiment == "extreme_fear":
+                token_in = "TOKEN_B"  # Buy TOKEN_A (the "risky" asset)
+            elif market_sentiment == "extreme_greed":
+                token_in = "TOKEN_A"  # Sell TOKEN_A, take profits
+            else:
+                token_in = random.choice(["TOKEN_A", "TOKEN_B"])
+                
             reserve = self.pool.reserve_a if token_in == "TOKEN_A" else self.pool.reserve_b
             trade_size = reserve * pct / 100
             trade_size = min(trade_size, self.current_value * 0.2)
@@ -84,6 +121,8 @@ class WhaleAgent(BaseAgent):
                     "pool_pct": round(pct, 2),
                     "slippage": round(receipt["slippage_pct"], 4),
                     "price_after": receipt["price_after"],
+                    "market_sentiment": market_sentiment,
+                    "real_btc_price": round(real_btc_price, 2),
                 },
             )
             actions.append(action)
@@ -92,6 +131,8 @@ class WhaleAgent(BaseAgent):
                 "amount": round(trade_size, 2),
                 "slippage_pct": round(receipt["slippage_pct"], 4),
                 "pool_impact_pct": round(pct, 2),
+                "market_sentiment": market_sentiment,
+                "real_btc_price": round(real_btc_price, 2),
                 "receipt": receipt,
             })
 

@@ -9,8 +9,9 @@ from blockchain_service import blockchain_service
 from config import settings
 
 # Import routers
-from routers import participants, pool, lending, alerts, simulations, api_adapter, auth
 from agents.router import router as agents_router
+from routers import participants, pool, lending, alerts, simulations, api_adapter, auth, wallet_auth
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -31,8 +32,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(api_adapter.router)  # Frontend API adapter (must be first to catch /api/* routes)
-app.include_router(auth.router)
+app.include_router(auth.router)          # Firebase/Google SSO → /auth/*
+app.include_router(wallet_auth.router)   # Wallet/MetaMask auth → /api/auth/*
+app.include_router(api_adapter.router)   # Frontend API adapter → /api/*
 app.include_router(participants.router)
 app.include_router(pool.router)
 app.include_router(lending.router)
@@ -122,8 +124,8 @@ async def get_contract_addresses():
             "CollateralVault": settings.collateral_vault_address,
             "LendingPool": settings.lending_pool_address,
             "LiquidityPool": settings.liquidity_pool_address,
-            "SimTokenA": settings.sim_token_a_address,
-            "SimTokenB": settings.sim_token_b_address
+            "Palladium (PLDM)": settings.palladium_address,
+            "Badassium (BADM)": settings.badassium_address
         }
     }
 

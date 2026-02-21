@@ -10,8 +10,12 @@ Agent Types:
   - MEVBot:         Front-runs transactions from a simulated mempool
   - AttackerAgent:  Simulates flash-loan exploit patterns
 
+Real Market Data:
+  - MarketDataService: Fetches live crypto prices from CoinDesk API
+  - Agents react to real BTC/ETH/SOL price movements and volatility
+
 Architecture Flow:
-  Agents → Transactions → Smart Contracts → Events → Fraud Monitor → Backend Logs → Frontend
+  Real Market Data → Agents → Transactions → Smart Contracts → Events → Fraud Monitor → Backend Logs → Frontend
 
 Usage:
   from agents.simulation_runner import SimulationRunner
@@ -28,6 +32,7 @@ from agents.mev_bot import MEVBot
 from agents.attacker_agent import AttackerAgent
 from agents.fraud_monitor import FraudMonitor
 from agents.simulation_runner import SimulationRunner
+from agents.market_data import MarketDataService, market_data_service
 
 __all__ = [
     "BaseAgent",
@@ -41,4 +46,6 @@ __all__ = [
     "AttackerAgent",
     "FraudMonitor",
     "SimulationRunner",
+    "MarketDataService",
+    "market_data_service",
 ]
