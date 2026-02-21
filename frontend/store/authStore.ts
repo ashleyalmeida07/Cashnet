@@ -3,10 +3,9 @@ import { persist } from 'zustand/middleware';
 
 export interface User {
   id: string;
-  email: string;
-  name: string;
-  role: 'user' | 'admin';
-  plan: 'starter' | 'pro' | 'enterprise';
+  walletAddress: string;
+  name?: string;
+  email?: string;
   createdAt: number;
   avatar?: string;
 }
@@ -16,12 +15,14 @@ interface AuthState {
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  token: string | null;
+  loginWithWallet: (walletAddress: string, signature: string, name?: string, email?: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User | null) => void;
   setError: (error: string | null) => void;
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -30,53 +31,60 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       loading: false,
       error: null,
+      token: null,
 
-      login: async (email: string, password: string) => {
+      loginWithWallet: async (walletAddress: string, signature: string, name?: string, email?: string) => {
         set({ loading: true, error: null });
         try {
-          // Simulate API call
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          console.log('[STORE] loginWithWallet called with:', { walletAddress, signature: signature.substring(0, 10) + '...', name, email });
+          
+          // Verify signature with backend (nonce already obtained by caller)
+          const verifyResponse = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              wallet_address: walletAddress,
+              signature,
+              name,
+              email,
+            }),
+          });
 
-          // Mock user data based on email
-          const mockUser: User = {
-            id: `user_${Math.random().toString(36).substr(2, 9)}`,
-            email,
-            name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-            role: email.includes('admin') ? 'admin' : 'user',
-            plan: email.includes('enterprise') ? 'enterprise' : email.includes('pro') ? 'pro' : 'starter',
-            createdAt: Date.now(),
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+          console.log('[STORE] Verify response status:', verifyResponse.status);
+
+          if (!verifyResponse.ok) {
+            const errorText = await verifyResponse.text();
+            console.error('[STORE] Verify error response:', errorText);
+            throw new Error('Signature verification failed');
+          }
+
+          const authData = await verifyResponse.json();
+          console.log('[STORE] Auth data received:', authData);
+
+          // Create user object
+          const user: User = {
+            id: walletAddress,
+            walletAddress: authData.wallet_address,
+            name: authData.name,
+            email: authData.email,
+            createdAt: new Date(authData.created_at).getTime(),
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${walletAddress}`,
           };
 
-          set({ user: mockUser, isAuthenticated: true, loading: false });
-        } catch (error) {
+          console.log('[STORE] Setting user state:', user);
+
           set({
-            error: error instanceof Error ? error.message : 'Login failed',
+            user,
+            token: authData.token,
+            isAuthenticated: true,
             loading: false,
           });
-          throw error;
-        }
-      },
-
-      signup: async (email: string, password: string, name: string) => {
-        set({ loading: true, error: null });
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 800));
-
-          const mockUser: User = {
-            id: `user_${Math.random().toString(36).substr(2, 9)}`,
-            email,
-            name,
-            role: 'user',
-            plan: 'starter',
-            createdAt: Date.now(),
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-          };
-
-          set({ user: mockUser, isAuthenticated: true, loading: false });
+          
+          console.log('[STORE] User state updated successfully');
         } catch (error) {
+          console.error('[STORE] Login error:', error);
           set({
-            error: error instanceof Error ? error.message : 'Signup failed',
+            error: error instanceof Error ? error.message : 'Wallet authentication failed',
             loading: false,
           });
           throw error;
@@ -84,7 +92,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        set({ user: null, isAuthenticated: false, error: null });
+        set({ user: null, token: null, isAuthenticated: false, error: null });
       },
 
       setUser: (user: User | null) => {
@@ -97,7 +105,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-store',
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

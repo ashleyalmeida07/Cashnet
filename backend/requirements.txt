@@ -10,3 +10,6 @@ asyncpg==0.29.0
 alembic==1.13.1
 python-multipart==0.0.6
 httpx==0.26.0
+pyjwt==2.8.0
+eth-account==0.10.0
+

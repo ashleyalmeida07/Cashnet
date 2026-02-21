@@ -89,3 +89,18 @@ class Simulation(Base):
     agents_count = Column(Integer, default=0)
     transactions_count = Column(Integer, default=0)
     alerts_count = Column(Integer, default=0)
+
+
+class Borrower(Base):
+    """Borrowers authenticated via wallet signature"""
+    __tablename__ = "borrowers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    wallet_address = Column(String(42), unique=True, index=True, nullable=False)  # Ethereum address
+    nonce = Column(String, nullable=False)  # Random nonce for signature verification
+    name = Column(String)  # Optional display name
+    email = Column(String)  # Optional email
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_login = Column(DateTime(timezone=True))
+    is_active = Column(Integer, default=1)  # 1 = active, 0 = inactive
