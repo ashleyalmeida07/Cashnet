@@ -1,221 +1,266 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useThreatStore, ThreatAlert } from '@/store/threatStore';
+import React, { useState, useEffect } from 'react';
+import Badge from '@/components/Badge';
+import { useThreatStore } from '@/store/threatStore';
 import { generateThreatScores, generateThreatAlerts } from '@/lib/mockData';
 
-const severityConfig: Record<string, { color: string; bg: string; label: string }> = {
-  low:      { color: '#22c55e', bg: '#22c55e1a', label: 'LOW' },
-  medium:   { color: '#f0a500', bg: '#f0a5001a', label: 'MED' },
-  high:     { color: '#ff3860', bg: '#ff38601a', label: 'HIGH' },
-  critical: { color: '#ff0033', bg: '#ff00331a', label: 'CRIT' },
-};
-
-const riskConfig: Record<string, { color: string; label: string; icon: string }> = {
-  low:      { color: '#22c55e', label: 'LOW RISK',      icon: '✓' },
-  medium:   { color: '#f0a500', label: 'MEDIUM RISK',   icon: '⚠' },
-  high:     { color: '#ff3860', label: 'HIGH RISK',     icon: '⚡' },
-  critical: { color: '#ff0033', label: 'CRITICAL RISK', icon: '☠' },
-};
-
-const axisDescriptions: Record<string, string> = {
-  MEV:        'Maximal extractable value exploitation risk',
-  Oracle:     'Price feed manipulation & deviation risk',
-  Liquidity:  'Pool depth & withdrawal pressure risk',
-  Governance: 'Voting concentration & proposal risk',
-  Flash:      'Flash loan attack surface risk',
-  Systemic:   'Cross-protocol cascading failure risk',
-};
-
-function timeAgo(ts: number) {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  return `${Math.floor(s / 3600)}h ago`;
-}
-
 export default function ThreatsPage() {
-  const {
-    threatScores,
-    activeAlerts,
-    overallRiskLevel,
-    setThreatScores,
-    resolveAlert,
-    setOverallRiskLevel,
-  } = useThreatStore();
-
-  const [alertsData, setAlertsData] = useState<ThreatAlert[]>([]);
+  const [threatScores] = useState(() => generateThreatScores());
+  const [alerts] = useState(() => generateThreatAlerts());
+  const [radarRotation, setRadarRotation] = useState(0);
 
   useEffect(() => {
-    if (threatScores.length === 0) setThreatScores(generateThreatScores());
-    const mockAlerts = generateThreatAlerts();
-    setAlertsData(mockAlerts);
-    const hasCritical = mockAlerts.some((a) => a.severity === 'critical' && !a.resolved);
-    const hasHigh = mockAlerts.some((a) => a.severity === 'high' && !a.resolved);
-    const hasMed = mockAlerts.some((a) => a.severity === 'medium' && !a.resolved);
-    setOverallRiskLevel(hasCritical ? 'critical' : hasHigh ? 'high' : hasMed ? 'medium' : 'low');
+    const interval = setInterval(() => {
+      setRadarRotation((prev) => (prev + 2) % 360);
+    }, 50);
+    return () => clearInterval(interval);
   }, []);
 
-  const displayScores = threatScores.length > 0 ? threatScores : generateThreatScores();
-  const allAlerts = activeAlerts.length > 0 ? activeAlerts : alertsData;
-  const unresolvedAlerts = allAlerts.filter((a) => !a.resolved);
-  const resolvedAlerts = allAlerts.filter((a) => a.resolved);
-  const risk = riskConfig[overallRiskLevel] ?? riskConfig.low;
-
-  const kpis = [
-    { label: 'Active Alerts',    value: String(unresolvedAlerts.length),                                         color: unresolvedAlerts.length > 0 ? '#ff3860' : '#22c55e' },
-    { label: 'Critical',         value: String(unresolvedAlerts.filter((a) => a.severity === 'critical').length), color: '#ff0033' },
-    { label: 'High Severity',    value: String(unresolvedAlerts.filter((a) => a.severity === 'high').length),    color: '#ff3860' },
-    { label: 'Resolved Today',   value: String(resolvedAlerts.length),                                           color: '#22c55e' },
-  ];
-
-  const handleResolve = (id: string) => {
-    resolveAlert(id);
-    setAlertsData((prev) => prev.map((a) => a.id === id ? { ...a, resolved: true } : a));
-  };
+  const criticalAlerts = alerts.filter((a) => a.severity === 'critical');
+  const highAlerts = alerts.filter((a) => a.severity === 'high');
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold font-mono text-text-primary">Threat Monitor</h1>
-          <p className="text-sm text-text-tertiary font-mono mt-1">Protocol attack surface · risk vectors</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded border font-mono text-sm font-bold"
-          style={{ color: risk.color, borderColor: risk.color, background: `${risk.color}15` }}>
-          <span>{risk.icon}</span>
-          <span>{risk.label}</span>
-        </div>
+    <div className="space-y-8 animate-fadeUp">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold font-mono text-text-primary mb-2">
+          Threat Detection
+        </h1>
+        <p className="text-text-secondary text-sm font-mono">
+          MEV, oracle, liquidity, and systemic risk monitoring
+        </p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg-secondary)] p-4">
-            <div className="text-xs font-mono text-text-tertiary mb-1">{k.label}</div>
-            <div className="text-2xl font-bold font-mono" style={{ color: k.color }}>{k.value}</div>
+      {/* Radar Chart & Score Badges */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Radar */}
+        <div className="lg:col-span-1 card flex items-center justify-center p-12">
+          <div className="relative w-48 h-48">
+            <svg
+              viewBox="0 0 200 200"
+              className="absolute inset-0"
+              style={{ transform: `rotate(${radarRotation}deg)` }}
+            >
+              {/* Concentric Circles */}
+              {[1, 2, 3].map((r) => (
+                <circle
+                  key={r}
+                  cx="100"
+                  cy="100"
+                  r={50 * r}
+                  fill="none"
+                  stroke="rgba(0, 212, 255, 0.2)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* Axes */}
+              {threatScores.map((_, idx) => {
+                const angle = (idx / threatScores.length) * Math.PI * 2 - Math.PI / 2;
+                const x = 100 + Math.cos(angle) * 80;
+                const y = 100 + Math.sin(angle) * 80;
+                return (
+                  <line
+                    key={`axis-${idx}`}
+                    x1="100"
+                    y1="100"
+                    x2={x}
+                    y2={y}
+                    stroke="rgba(0, 212, 255, 0.3)"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+
+              {/* Data Points */}
+              {threatScores.map((score, idx) => {
+                const angle = (idx / threatScores.length) * Math.PI * 2 - Math.PI / 2;
+                const radius = (score.score / 100) * 80;
+                const x = 100 + Math.cos(angle) * radius;
+                const y = 100 + Math.sin(angle) * radius;
+                return (
+                  <circle
+                    key={`point-${idx}`}
+                    cx={x}
+                    cy={y}
+                    r="4"
+                    fill={score.status === 'critical' ? '#ff3860' : score.status === 'warning' ? '#ffb644' : '#00d463'}
+                    opacity="0.8"
+                  />
+                );
+              })}
+
+              {/* Center */}
+              <circle cx="100" cy="100" r="3" fill="#00d4ff" />
+            </svg>
           </div>
-        ))}
-      </div>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Threat Score Bars */}
-        <div className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg-secondary)] p-5">
-          <h2 className="text-sm font-mono font-bold text-text-primary mb-4">Risk Vectors</h2>
-          <div className="space-y-4">
-            {displayScores.map((ts) => {
-              const barColor =
-                ts.status === 'critical' ? '#ff0033' :
-                ts.status === 'warning'  ? '#f0a500' : '#22c55e';
-              return (
-                <div key={ts.axis} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-text-primary">{ts.axis}</span>
-                      <span className="text-xs font-mono text-text-tertiary ml-2">{axisDescriptions[ts.axis] ?? ''}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold" style={{ color: barColor }}>{ts.score}</span>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded uppercase"
-                        style={{ color: barColor, border: `1px solid ${barColor}`, background: `${barColor}1a` }}>
-                        {ts.status}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-[color:var(--color-bg-primary)] rounded-full overflow-hidden">
+        {/* Score Badges */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {threatScores.map((score) => (
+              <div
+                key={score.axis}
+                className={`p-4 rounded border ${
+                  score.status === 'critical'
+                    ? 'bg-[rgba(255,56,96,0.1)] border-danger'
+                    : score.status === 'warning'
+                    ? 'bg-[rgba(255,182,68,0.1)] border-warn'
+                    : 'bg-[rgba(0,212,99,0.1)] border-success'
+                }`}
+              >
+                <div className="font-mono font-bold text-text-primary text-sm mb-2">
+                  {score.axis}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-[color:var(--color-bg-accent)] rounded overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${ts.score}%`, background: barColor }}
+                      className={`h-full ${
+                        score.status === 'critical'
+                          ? 'bg-danger'
+                          : score.status === 'warning'
+                          ? 'bg-warn'
+                          : 'bg-success'
+                      }`}
+                      style={{ width: `${score.score}%` }}
                     />
                   </div>
+                  <span className="text-lg font-bold font-mono min-w-fit">{score.score}</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="mt-5 pt-4 border-t border-[color:var(--color-border)] flex items-center gap-5 text-xs font-mono text-text-tertiary">
-            <span><span className="text-[#22c55e]">■</span> Safe (&lt;50)</span>
-            <span><span className="text-[#f0a500]">■</span> Warning (50–70)</span>
-            <span><span className="text-[#ff0033]">■</span> Critical (&gt;70)</span>
+                <Badge variant={score.status === 'critical' ? 'critical' : score.status === 'warning' ? 'high' : 'success'} className="mt-2">
+                  {score.status.toUpperCase()}
+                </Badge>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Active Alerts */}
-        <div className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg-secondary)] p-5 flex flex-col">
-          <h2 className="text-sm font-mono font-bold text-text-primary mb-4">Active Alerts</h2>
-          <div className="flex-1 space-y-3 overflow-y-auto max-h-80 pr-1">
-            {unresolvedAlerts.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-2xl mb-2">✓</div>
-                <div className="text-xs font-mono text-[#22c55e]">No active alerts</div>
-              </div>
-            ) : (
-              unresolvedAlerts.map((alert) => {
-                const sv = severityConfig[alert.severity] ?? severityConfig.low;
-                return (
-                  <div key={alert.id} className="rounded border p-3 space-y-2"
-                    style={{ borderColor: sv.color, background: sv.bg }}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-0.5 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono px-1.5 py-0.5 rounded font-bold"
-                            style={{ color: sv.color, border: `1px solid ${sv.color}`, background: `${sv.color}30` }}>
-                            {sv.label}
-                          </span>
-                          <span className="text-xs font-mono font-bold text-text-primary">{alert.type}</span>
-                        </div>
-                        <p className="text-xs font-mono text-text-secondary">{alert.description}</p>
-                        <div className="text-xs font-mono text-text-tertiary">{timeAgo(alert.timestamp)}</div>
-                      </div>
-                      <button
-                        onClick={() => handleResolve(alert.id)}
-                        className="shrink-0 px-2 py-1 text-xs font-mono rounded border text-[#22c55e] border-[#22c55e] hover:bg-[#22c55e1a] transition-colors"
-                      >
-                        Resolve
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+      {/* Active Alerts */}
+      <div className="card space-y-4">
+        <h3 className="text-sm font-mono font-bold text-text-primary uppercase">
+          Active Alerts ({alerts.length})
+        </h3>
 
-          {resolvedAlerts.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-[color:var(--color-border)]">
-              <div className="text-xs font-mono text-text-tertiary mb-2">Recently Resolved ({resolvedAlerts.length})</div>
-              <div className="space-y-1">
-                {resolvedAlerts.map((alert) => (
-                  <div key={alert.id} className="flex items-center justify-between text-xs font-mono text-text-tertiary line-through opacity-60">
-                    <span>{alert.type}</span>
-                    <span>{timeAgo(alert.timestamp)}</span>
-                  </div>
-                ))}
-              </div>
+        {/* Alert Breakdown */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {criticalAlerts.length > 0 && (
+            <div className="p-3 bg-[rgba(255,56,96,0.1)] border border-danger rounded">
+              <div className="text-xs text-text-tertiary font-mono">Critical Alerts</div>
+              <div className="text-2xl font-bold font-mono text-danger">{criticalAlerts.length}</div>
+            </div>
+          )}
+          {highAlerts.length > 0 && (
+            <div className="p-3 bg-[rgba(255,182,68,0.1)] border border-warn rounded">
+              <div className="text-xs text-text-tertiary font-mono">High Priority</div>
+              <div className="text-2xl font-bold font-mono text-warn">{highAlerts.length}</div>
             </div>
           )}
         </div>
+
+        {/* Alert List */}
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {alerts.map((alert) => (
+            <div
+              key={alert.id}
+              className={`p-4 rounded border ${
+                alert.severity === 'critical'
+                  ? 'bg-[rgba(255,56,96,0.1)] border-danger'
+                  : alert.severity === 'high'
+                  ? 'bg-[rgba(255,182,68,0.1)] border-warn'
+                  : 'bg-[rgba(0,212,255,0.1)] border-accent'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="font-bold font-mono text-text-primary text-sm">
+                    {alert.type}
+                  </h4>
+                  <p className="text-xs text-text-secondary font-mono mt-1">
+                    {alert.description}
+                  </p>
+                  <div className="text-xs text-text-tertiary font-mono mt-2">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+                <Badge
+                  variant={
+                    alert.severity === 'critical'
+                      ? 'critical'
+                      : alert.severity === 'high'
+                      ? 'high'
+                      : 'medium'
+                  }
+                >
+                  {alert.severity.toUpperCase()}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Threat Recommendations */}
-      <div className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg-secondary)] p-5">
-        <h2 className="text-sm font-mono font-bold text-text-primary mb-4">Recommended Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Attack Patterns */}
+      <div className="card space-y-4">
+        <h3 className="text-sm font-mono font-bold text-text-primary uppercase">Attack Pattern Library</h3>
+        <div className="space-y-3">
           {[
-            { icon: '⏸', label: 'Pause High-Risk Pools',  desc: 'Temporarily suspend pools with liquidity scores above 60', color: '#ff3860', action: 'Pause Pools' },
-            { icon: '◎', label: 'Check Oracle Feeds',      desc: 'Audit price feed sources for deviation and staleness',     color: '#f0a500', action: 'Run Check' },
-            { icon: '◆', label: 'Export Threat Report',    desc: 'Generate a timestamped PDF of all threat vectors',         color: '#00d4ff', action: 'Export PDF' },
-          ].map((rec) => (
-            <div key={rec.label} className="rounded border p-4 space-y-3"
-              style={{ borderColor: rec.color, background: `${rec.color}0d` }}>
-              <div className="flex items-center gap-2">
-                <span style={{ color: rec.color }} className="text-lg">{rec.icon}</span>
-                <span className="text-xs font-mono font-bold text-text-primary">{rec.label}</span>
+            { name: 'Flash Loan Attack', instances: 3, riskLevel: 'high' },
+            { name: 'Sandwich Attack', instances: 7, riskLevel: 'critical' },
+            { name: 'Price Oracle Exploit', instances: 1, riskLevel: 'high' },
+            { name: 'Reentrancy', instances: 0, riskLevel: 'medium' },
+            { name: 'Governance Takeover', instances: 0, riskLevel: 'low' },
+          ].map((pattern) => (
+            <div key={pattern.name} className="flex items-center justify-between p-3 bg-[color:var(--color-bg-accent)] rounded">
+              <div>
+                <div className="font-mono font-bold text-text-primary text-sm">{pattern.name}</div>
+                <div className="text-xs text-text-tertiary font-mono">
+                  {pattern.instances} instance{pattern.instances !== 1 ? 's' : ''} detected
+                </div>
               </div>
-              <p className="text-xs font-mono text-text-secondary">{rec.desc}</p>
-              <button className="w-full py-1.5 text-xs font-mono rounded border transition-colors hover:opacity-80"
-                style={{ color: rec.color, borderColor: rec.color, background: `${rec.color}1a` }}>
-                {rec.action}
+              <Badge
+                variant={
+                  pattern.riskLevel === 'critical'
+                    ? 'critical'
+                    : pattern.riskLevel === 'high'
+                    ? 'high'
+                    : pattern.riskLevel === 'medium'
+                    ? 'medium'
+                    : 'success'
+                }
+              >
+                {pattern.riskLevel.toUpperCase()}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Contract Status */}
+      <div className="card space-y-4">
+        <h3 className="text-sm font-mono font-bold text-text-primary uppercase">Contract Status</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { name: 'Protocol', status: 'normal' },
+            { name: 'Lending', status: 'normal' },
+            { name: 'Oracle', status: 'warning' },
+            { name: 'Governance', status: 'normal' },
+          ].map((contract) => (
+            <div
+              key={contract.name}
+              className={`p-3 rounded border flex items-center justify-between ${
+                contract.status === 'normal'
+                  ? 'bg-[rgba(0,212,99,0.1)] border-success'
+                  : 'bg-[rgba(255,182,68,0.1)] border-warn'
+              }`}
+            >
+              <span className="font-mono font-bold text-text-primary text-sm">
+                {contract.name}
+              </span>
+              <button className="text-xs font-mono px-2 py-1 rounded hover:opacity-70">
+                {contract.status === 'normal' ? '✓ ACTIVE' : '⚠ PAUSE'}
               </button>
             </div>
           ))}
