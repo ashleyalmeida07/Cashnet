@@ -46,7 +46,7 @@ const Sidebar: React.FC = () => {
             </div>
             {sidebarOpen && (
               <span className="font-mono text-xs font-bold uppercase hidden md:inline">
-                Rust-eze
+                cashnet
               </span>
             )}
           </Link>

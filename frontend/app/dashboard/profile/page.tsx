@@ -9,7 +9,7 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState({
     name: 'Alice Chen',
-    email: 'alice@rust-eze.io',
+    email: 'alice@cashnet.io',
     organization: 'Institutional Research',
     role: 'Admin',
     wallet: '0x1A2B3C4D5E6F...',

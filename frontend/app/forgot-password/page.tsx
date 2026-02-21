@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
             <div className="w-10 h-10 bg-accent rounded flex items-center justify-center text-base font-bold text-[color:var(--color-bg-primary)]">
               RE
             </div>
-            <span className="font-mono text-lg font-bold text-text-primary">Rust-eze</span>
+            <span className="font-mono text-lg font-bold text-text-primary">cashnet</span>
           </Link>
           <h1 className="text-3xl font-bold font-mono text-text-primary">
             Reset Password
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
                   if (error) setError('');
                 }}
                 className={`form-input ${error ? 'border-danger' : ''}`}
-                placeholder="admin@rust-eze.io"
+                placeholder="admin@cashnet.io"
               />
               {error && <p className="text-xs text-danger font-mono">{error}</p>}
             </div>

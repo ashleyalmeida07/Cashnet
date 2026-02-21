@@ -85,34 +85,10 @@ export default function LoginPage() {
           <div className="w-10 h-10 bg-accent rounded flex items-center justify-center text-base font-bold text-[color:var(--color-bg-primary)]">
             RE
           </div>
-          <span className="font-mono text-lg font-bold text-text-primary">Rust-eze</span>
+          <span className="font-mono text-lg font-bold text-text-primary">cashnet</span>
         </Link>
 
         <div className="space-y-8">
-          {/* Animated Hex */}
-          <div className="w-32 h-32 mx-auto">
-            <div className="animate-float">
-              <svg
-                viewBox="0 0 100 100"
-                className="w-full h-full text-accent"
-              >
-                <polygon
-                  points="50,10 90,35 90,65 50,90 10,65 10,35"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                />
-                <polygon
-                  points="50,25 75,40 75,60 50,75 25,60 25,40"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  opacity="0.5"
-                />
-              </svg>
-            </div>
-          </div>
-
           {/* Quote */}
           <div>
             <blockquote className="text-text-secondary italic font-mono text-sm">
@@ -148,7 +124,7 @@ export default function LoginPage() {
             <div className="w-8 h-8 bg-accent rounded flex items-center justify-center text-xs font-bold text-[color:var(--color-bg-primary)]">
               RE
             </div>
-            <span className="font-mono text-base font-bold text-text-primary">Rust-eze</span>
+            <span className="font-mono text-base font-bold text-text-primary">cashnet</span>
           </Link>
 
           {/* Heading */}
@@ -157,7 +133,7 @@ export default function LoginPage() {
               Sign In
             </h1>
             <p className="text-text-secondary text-sm font-mono">
-              Access the Rust-eze Simulation Lab
+              Access the cashnet Simulation Lab
             </p>
           </div>
 
@@ -177,7 +153,7 @@ export default function LoginPage() {
                   if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                 }}
                 className={`form-input ${errors.email ? 'border-danger' : ''}`}
-                placeholder="admin@rust-eze.io"
+                placeholder="admin@cashnet.io"
               />
               {errors.email && (
                 <p className="text-xs text-danger font-mono">{errors.email}</p>

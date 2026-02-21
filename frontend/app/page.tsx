@@ -2,6 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const TechEarth = dynamic(() => import('@/components/TechEarth'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[400px] flex items-center justify-center">
+      <div className="text-accent font-mono text-sm">Loading 3D Earth...</div>
+    </div>
+  ),
+});
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
@@ -23,7 +33,7 @@ export default function LandingPage() {
               RE
             </div>
             <span className="font-mono text-sm font-bold text-text-primary hidden sm:inline">
-              Rust-eze
+              cashnet
             </span>
           </Link>
 
@@ -52,70 +62,69 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-        {/* Background Grid */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0, 212, 255, 0.1) 25%, rgba(0, 212, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 212, 255, 0.1) 75%, rgba(0, 212, 255, 0.1) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 212, 255, 0.1) 25%, rgba(0, 212, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 212, 255, 0.1) 75%, rgba(0, 212, 255, 0.1) 76%, transparent 77%, transparent)',
-            backgroundSize: '50px 50px',
-          }}
-        />
-
-        {/* Gradient Orbs */}
-        <div className="absolute top-20 left-10 w-96 h-96 bg-accent opacity-5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple opacity-5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-cyan opacity-5 rounded-full blur-3xl" />
-
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-8 animate-fadeUp">
-          {/* Badge */}
-          <div className="inline-block px-4 py-2 bg-[rgba(0,212,255,0.1)] border border-accent rounded-full">
-            <span className="text-xs font-mono text-accent uppercase tracking-wider">
-              institutional defi risk simulation
-            </span>
-          </div>
-
-          {/* Title with Shimmer */}
-          <h1 className="text-5xl md:text-7xl font-bold font-mono text-text-primary leading-tight">
-            Understand{' '}
-            <span
-              className="bg-gradient-to-r from-accent via-cyan to-accent bg-clip-text text-transparent"
-              style={{
-                backgroundSize: '200% auto',
-                animation: 'shimmer 3s ease-in-out infinite',
-              }}
-            >
-              Systemic Risk
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-lg md:text-xl text-text-secondary font-mono max-w-2xl mx-auto">
-            The Rust-eze platform simulates complex DeFi scenarios, liquidation cascades, and market stress events in a controlled environment.
-          </p>
-
-          {/* KPI Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
-            {[
-              { label: '200+', desc: 'Simulations' },
-              { label: '$2.4B', desc: 'Tested' },
-              { label: '97.8%', desc: 'Accuracy' },
-              { label: '50ms', desc: 'Latency' },
-            ].map((kpi, idx) => (
-              <div key={idx} className="p-4 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded">
-                <div className="text-2xl font-bold font-mono text-accent">{kpi.label}</div>
-                <div className="text-xs text-text-tertiary font-mono mt-1">{kpi.desc}</div>
+        <div className="max-w-7xl mx-auto px-6 w-full">
+          <div className="grid md:grid-cols-2 gap-8 lg:gap-16 items-center min-h-[calc(100vh-4rem)]">
+            {/* Left: Content */}
+            <div className="space-y-5 animate-fadeUp z-10">
+              {/* Badge */}
+              <div className="inline-block px-3 py-1.5 bg-[rgba(0,212,255,0.1)] border border-accent rounded-full">
+                <span className="text-xs font-mono text-accent uppercase tracking-wider">
+                  institutional defi risk simulation
+                </span>
               </div>
-            ))}
-          </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-            <Link href="/signup" className="btn accent px-8 py-4 font-mono">
-              Start Free Trial
-            </Link>
-            <button className="btn outline px-8 py-4 font-mono">
-              Watch Demo
-            </button>
+              {/* Title with Shimmer */}
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-mono text-text-primary leading-tight">
+                Understand{' '}
+                <span
+                  style={{
+                    background: 'linear-gradient(90deg, #00d4ff, #7dd3fc, #00d4ff)',
+                    backgroundSize: '200% auto',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    animation: 'shimmer 3s ease-in-out infinite',
+                  }}
+                >
+                  Systemic Risk
+                </span>
+              </h1>
+
+              {/* Subtitle */}
+              <p className="text-sm md:text-base text-text-secondary font-mono max-w-md leading-relaxed">
+                The cashnet platform simulates complex DeFi scenarios, liquidation cascades, and market stress events in a controlled environment.
+              </p>
+
+              {/* KPI Row */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: '200+', desc: 'Simulations' },
+                  { label: '$2.4B', desc: 'Tested' },
+                  { label: '97.8%', desc: 'Accuracy' },
+                  { label: '50ms', desc: 'Latency' },
+                ].map((kpi, idx) => (
+                  <div key={idx} className="p-3 bg-[color:var(--color-bg-secondary)] border border-[color:var(--color-border)] rounded hover:border-accent transition-colors">
+                    <div className="text-xl font-bold font-mono text-accent">{kpi.label}</div>
+                    <div className="text-xs text-text-tertiary font-mono mt-0.5">{kpi.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/signup" className="btn accent px-6 py-2.5 font-mono text-sm font-semibold hover:scale-105 transition-transform">
+                  Start Free Trial
+                </Link>
+                <button className="btn outline px-6 py-2.5 font-mono text-sm hover:scale-105 transition-transform">
+                  Watch Demo
+                </button>
+              </div>
+            </div>
+
+            {/* Right: 3D Earth */}
+            <div className="relative flex items-center justify-center h-[400px] md:h-[500px]">
+              <TechEarth />
+            </div>
           </div>
         </div>
       </section>
@@ -353,14 +362,14 @@ export default function LandingPage() {
               Trusted by Industry Leaders
             </h2>
             <p className="text-text-secondary font-mono">
-              Risk teams worldwide rely on Rust-eze for stress testing
+              Risk teams worldwide rely on cashnet for stress testing
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                quote: 'Rust-eze identified a critical liquidation cascade scenario we would have missed. Essential for institutional risk management.',
+                quote: 'cashnet identified a critical liquidation cascade scenario we would have missed. Essential for institutional risk management.',
                 author: 'Sarah Chen',
                 role: 'Chief Risk Officer, MegaFund Capital',
                 rating: 5,
@@ -476,7 +485,7 @@ export default function LandingPage() {
           <div className="space-y-3">
             {[
               {
-                q: 'What blockchain networks does Rust-eze support?',
+                q: 'What blockchain networks does cashnet support?',
                 a: 'We support Ethereum mainnet, Polygon, Arbitrum, Optimism, and all EVM-compatible chains. Testnet support includes Sepolia, Goerli, and Mumbai.',
               },
               {
@@ -562,16 +571,6 @@ export default function LandingPage() {
       {/* Final CTA */}
       <section className="py-20 px-6">
         <div className="max-w-2xl mx-auto relative p-12 bg-[color:var(--color-bg-secondary)] border border-accent rounded text-center space-y-6 overflow-hidden">
-          <div
-            className="absolute inset-0 bg-gradient-radial from-accent/20 to-transparent opacity-30 rounded pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(circle at center, rgba(0, 212, 255, 0.2) 0%, transparent 70%)',
-            }}
-          />
-
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent opacity-5 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple opacity-5 rounded-full blur-3xl" />
-
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold font-mono text-text-primary mb-4">
               Ready to Master DeFi Risk?
@@ -653,7 +652,7 @@ export default function LandingPage() {
 
           <div className="border-t border-[color:var(--color-border)] pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-xs font-mono text-text-tertiary">
-              © 2024 Rust-eze. All rights reserved.
+              © 2024 cashnet. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <a href="#" className="text-text-secondary hover:text-accent transition-colors">

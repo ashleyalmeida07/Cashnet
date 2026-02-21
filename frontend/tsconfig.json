@@ -22,6 +22,10 @@
         "name": "next"
       }
     ],
+    "types": [
+      "three",
+      "node"
+    ],
     "paths": {
       "@/*": [
         "./*"
