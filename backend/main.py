@@ -9,12 +9,10 @@ from blockchain_service import blockchain_service
 from config import settings
 
 # Import routers
-<<<<<<< HEAD
 from routers import participants, pool, lending, alerts, simulations, api_adapter
 from agents.router import router as agents_router
-=======
 from routers import participants, pool, lending, alerts, simulations, api_adapter, auth
->>>>>>> metalogin
+
 
 # Create FastAPI app
 app = FastAPI(
