@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const [healthMatrix, setHealthMatrix] = useState<HealthItem[]>([
     { name: 'AMM', health: 0 },
     { name: 'Oracle', health: 0 },
-    { name: 'Systemic', health: 0 },
+    { name: 'Lender', health: 0 },
   ]);
 
   const [terminalLines, setTerminalLines] = useState([
@@ -120,9 +120,9 @@ export default function DashboardPage() {
           'MEV': 'AMM',
           'Flash Loan': 'Oracle',
           'Liquidity': 'AMM',
-          'Cascade': 'Systemic',
+          'Cascade': 'Lender',
           'Price': 'Oracle',
-          'Systemic': 'Systemic',
+          'Systemic': 'Lender',
         };
         const agg: Record<string, number[]> = {};
         for (const s of scores) {
@@ -133,7 +133,7 @@ export default function DashboardPage() {
         setHealthMatrix([
           { name: 'AMM', health: Math.round(avg(agg['AMM'])) },
           { name: 'Oracle', health: Math.round(avg(agg['Oracle'])) },
-          { name: 'Systemic', health: Math.round(avg(agg['Systemic'])) },
+          { name: 'Lender', health: Math.round(avg(agg['Lender'])) },
         ]);
       }
     } catch {
