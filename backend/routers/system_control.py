@@ -29,9 +29,9 @@ try:
         settings.access_control_address,
         ACCESS_CONTROL_ABI
     )
-    print(f"✅ AccessControl contract loaded at {settings.access_control_address}")
+    print(f"[OK] AccessControl contract loaded at {settings.access_control_address}")
 except Exception as e:
-    print(f"⚠️  Warning: Could not load AccessControl contract: {e}")
+    print(f"[WARN] Warning: Could not load AccessControl contract: {e}")
 
 
 class SystemStatusResponse(BaseModel):

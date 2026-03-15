@@ -33,6 +33,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://cash-net-cn.vercel.app",
+        "https://cashnet-mu.vercel.app",
         "http://localhost:3000",
     ],
     allow_credentials=True,
@@ -67,19 +68,19 @@ async def startup_event():
     from logging_utils import log_info, log_success, log_error
     from models import LogCategoryEnum
     
-    print("🚀 Starting Rust-eze Simulation Lab Backend...")
-    
+    print("[Starting] Rust-eze Simulation Lab Backend...")
+
     # Initialize database
     try:
         init_db()
-        print("✅ Database initialized successfully")
+        print("[OK] Database initialized successfully")
         log_success(
             LogCategoryEnum.DATABASE,
             "Database",
             "Database initialized successfully and connection pool created"
         )
     except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
+        print(f"[ERROR] Database initialization failed: {e}")
         log_error(
             LogCategoryEnum.DATABASE,
             "Database",
@@ -90,7 +91,7 @@ async def startup_event():
     try:
         if blockchain_service.is_connected():
             block_number = blockchain_service.get_block_number()
-            print(f"✅ Connected to Sepolia testnet (Block: {block_number})")
+            print(f"[OK] Connected to Sepolia testnet (Block: {block_number})")
             log_success(
                 LogCategoryEnum.SYSTEM,
                 "Blockchain",
@@ -98,14 +99,14 @@ async def startup_event():
                 metadata={"network": "sepolia", "block_number": block_number}
             )
         else:
-            print("⚠️  Blockchain connection failed")
+            print("[WARN] Blockchain connection failed")
             log_error(
                 LogCategoryEnum.SYSTEM,
                 "Blockchain",
                 "Blockchain connection failed"
             )
     except Exception as e:
-        print(f"⚠️  Blockchain connection error: {e}")
+        print(f"[WARN] Blockchain connection error: {e}")
         log_error(
             LogCategoryEnum.SYSTEM,
             "Blockchain",
@@ -127,47 +128,47 @@ async def startup_event():
             "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
             timeout=4,
         )
-        print("✅ Firebase cert cache pre-warmed")
+        print("[OK] Firebase cert cache pre-warmed")
         log_info(
             LogCategoryEnum.AUTH,
             "Firebase",
             "Firebase certificate cache pre-warmed"
         )
     except Exception as _e:
-        print(f"⚠️  Firebase cert pre-warm skipped: {_e}")
+        print(f"[WARN] Firebase cert pre-warm skipped: {_e}")
 
     # Pre-load / train the combined ML risk model
     try:
         import asyncio
         from liquidity_engine.ml_model import get_model as get_liquidity_model
         await asyncio.get_event_loop().run_in_executor(None, get_liquidity_model)
-        print("✅ DotlocalRiskModel ready")
+        print("[OK] DotlocalRiskModel ready")
         log_success(
             LogCategoryEnum.SYSTEM,
             "ML Model",
             "DotlocalRiskModel initialized and ready"
         )
     except Exception as e:
-        print(f"⚠️  Liquidity ML model init failed: {e}")
+        print(f"[WARN] Liquidity ML model init failed: {e}")
 
     # Pre-load / train the agent intelligence ML model
     try:
         from agents.ml_model import get_model as get_agent_model
         await asyncio.get_event_loop().run_in_executor(None, get_agent_model)
-        print("✅ DotlocalAgentIntelModel ready")
+        print("[OK] DotlocalAgentIntelModel ready")
     except Exception as e:
-        print(f"⚠️  Agent ML model init failed: {e}")
+        print(f"[WARN] Agent ML model init failed: {e}")
 
     # Initialize blockchain integrator for on-chain event recording
     try:
         from agents.blockchain_integrator import get_blockchain_integrator
         integrator = await get_blockchain_integrator()
         if integrator.contracts_loaded:
-            print(f"✅ BlockchainIntegrator ready (real txs: {integrator.enable_real_txs})")
+            print(f"[OK] BlockchainIntegrator ready (real txs: {integrator.enable_real_txs})")
         else:
-            print("⚠️  BlockchainIntegrator running in simulation mode")
+            print("[WARN] BlockchainIntegrator running in simulation mode")
     except Exception as e:
-        print(f"⚠️  BlockchainIntegrator init failed: {e}")
+        print(f"[WARN] BlockchainIntegrator init failed: {e}")
 
     # Verify Groq LLM connectivity
     try:
@@ -175,14 +176,14 @@ async def startup_event():
         groq_key = _get_groq_key()
         groq_model = _get_groq_model()
         if groq_key:
-            print(f"✅ Groq LLM ready (model: {groq_model}, key: ...{groq_key[-8:]})")
+            print(f"[OK] Groq LLM ready (model: {groq_model}, key: ...{groq_key[-8:]})")
         else:
-            print("⚠️  Groq API key not configured — agent AI decisions disabled")
+            print("[WARN] Groq API key not configured — agent AI decisions disabled")
     except Exception as e:
-        print(f"⚠️  Groq init check failed: {e}")
+        print(f"[WARN] Groq init check failed: {e}")
 
-    print(f"🌐 API running at http://{settings.api_host}:{settings.api_port}")
-    print(f"📚 Docs available at http://{settings.api_host}:{settings.api_port}/docs")
+    print(f"[API] API running at http://{settings.api_host}:{settings.api_port}")
+    print(f"[Docs] Docs available at http://{settings.api_host}:{settings.api_port}/docs")
 
 
 @app.get("/")

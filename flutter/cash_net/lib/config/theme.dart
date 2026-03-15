@@ -31,7 +31,6 @@ class AppTheme {
         primary: accent,
         secondary: accentHover,
         surface: bgSecondary,
-        background: bgPrimary,
         error: error,
       ),
       appBarTheme: const AppBarTheme(

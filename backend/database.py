@@ -44,7 +44,7 @@ def init_db():
     """
     import models  # Import here to avoid circular imports
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created successfully")
+    print("[OK] Database tables created successfully")
 
     # Safe column migrations — add columns that may be missing from older DB instances
     _safe_add_columns()

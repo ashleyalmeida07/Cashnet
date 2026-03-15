@@ -26,17 +26,17 @@ if not firebase_admin._apps:
             sa_json = json.loads(base64.b64decode(sa_b64))
             cred = fb_creds.Certificate(sa_json)
             firebase_admin.initialize_app(cred)
-            print("✅ Firebase Admin SDK initialized from FIREBASE_SA_B64")
+            print("[OK] Firebase Admin SDK initialized from FIREBASE_SA_B64")
         else:
             cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
             if cred_path and os.path.exists(cred_path):
                 cred = fb_creds.Certificate(cred_path)
                 firebase_admin.initialize_app(cred)             
-                print("✅ Firebase Admin SDK initialized from GOOGLE_APPLICATION_CREDENTIALS")
+                print("[OK] Firebase Admin SDK initialized from GOOGLE_APPLICATION_CREDENTIALS")
             else:
                 cred = fb_creds.ApplicationDefault()
                 firebase_admin.initialize_app(cred)
-                print("✅ Firebase Admin SDK initialized from Application Default Credentials")
+                print("[OK] Firebase Admin SDK initialized from Application Default Credentials")
     except Exception as e:
         print(f"Warning: Firebase Admin SDK initialization failed: {e}")
         print("Firebase token verification will not work until this is resolved.")
