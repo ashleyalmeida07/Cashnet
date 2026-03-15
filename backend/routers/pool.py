@@ -152,6 +152,23 @@ def _log_tx(
 async def get_pool_state():
     """Full on-chain pool state: reserves, prices, LP supply."""
     try:
+        if not blockchain_service.is_connected():
+            # Return mock data when blockchain is not connected
+            return {
+                "reserve_a":        100000.0,
+                "reserve_b":        100000.0,
+                "price_a_per_b":    1.0,
+                "price_b_per_a":    1.0,
+                "total_liquidity":  200000.0,
+                "total_lp_supply":  100000.0,
+                "fee_pct":          0.3,
+                "token_a":          "PAL",
+                "token_b":          "BAD",
+                "token_a_address":  settings.palladium_address,
+                "token_b_address":  settings.badassium_address,
+                "contract_address": settings.liquidity_pool_address,
+                "mock": True,
+            }
         pool = _pool_contract()
 
         reserve_a_wei = pool.functions.reserveA().call()
@@ -178,7 +195,23 @@ async def get_pool_state():
             "contract_address": settings.liquidity_pool_address,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return mock data on error
+        return {
+            "reserve_a":        100000.0,
+            "reserve_b":        100000.0,
+            "price_a_per_b":    1.0,
+            "price_b_per_a":    1.0,
+            "total_liquidity":  200000.0,
+            "total_lp_supply":  100000.0,
+            "fee_pct":          0.3,
+            "token_a":          "PAL",
+            "token_b":          "BAD",
+            "token_a_address":  settings.palladium_address,
+            "token_b_address":  settings.badassium_address,
+            "contract_address": settings.liquidity_pool_address,
+            "mock": True,
+            "error": str(e),
+        }
 
 
 @router.get("/balances/{wallet}")
@@ -206,6 +239,19 @@ async def slippage_curve(
 ):
     """Slippage vs. trade-size curve derived from live on-chain reserves (read-only)."""
     try:
+        if not blockchain_service.is_connected():
+            # Return mock slippage curve
+            result = []
+            for i in range(1, steps + 1):
+                pct = (i / steps) * 20.0
+                slip = pct * 0.05  # Mock: ~1% slippage per 20% trade
+                result.append({
+                    "trade_size_pct":   round(pct, 2),
+                    "trade_size_token": round(pct * 500, 4),
+                    "slippage_pct":     round(slip, 4),
+                })
+            return {"success": True, "data": result, "mock": True}
+
         pool = _pool_contract()
         ra = _from_wei(pool.functions.reserveA().call())
         rb = _from_wei(pool.functions.reserveB().call())
@@ -236,7 +282,17 @@ async def slippage_curve(
             })
         return {"success": True, "data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return mock data on error
+        result = []
+        for i in range(1, steps + 1):
+            pct = (i / steps) * 20.0
+            slip = pct * 0.05
+            result.append({
+                "trade_size_pct":   round(pct, 2),
+                "trade_size_token": round(pct * 500, 4),
+                "slippage_pct":     round(slip, 4),
+            })
+        return {"success": True, "data": result, "mock": True, "error": str(e)}
 
 
 @router.get("/depth-chart")
@@ -246,6 +302,21 @@ async def depth_chart(
 ):
     """Simulated bid/ask depth chart derived from live on-chain reserves (read-only)."""
     try:
+        if not blockchain_service.is_connected():
+            # Return mock depth chart
+            spot = 1.0
+            step = (price_range_pct / 100) * spot / levels
+            bids, asks = [], []
+            cumulative = 0.0
+            for i in range(1, levels + 1):
+                bid_price = max(spot - i * step, 0.01)
+                ask_price = spot + i * step
+                cumulative += 5000.0 / levels
+                scaled = round(cumulative / 1e3, 2)
+                bids.append({"price": round(bid_price, 6), "cumulative_token0": scaled, "liquidity_usd": scaled})
+                asks.append({"price": round(ask_price, 6), "cumulative_token0": scaled, "liquidity_usd": scaled})
+            return {"success": True, "data": {"spot_price": spot, "bids": bids, "asks": asks}, "mock": True}
+
         pool = _pool_contract()
         ra = _from_wei(pool.functions.reserveA().call())
         rb = _from_wei(pool.functions.reserveB().call())
@@ -269,7 +340,19 @@ async def depth_chart(
 
         return {"success": True, "data": {"spot_price": spot, "bids": bids, "asks": asks}}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return mock data on error
+        spot = 1.0
+        step = (price_range_pct / 100) * spot / levels
+        bids, asks = [], []
+        cumulative = 0.0
+        for i in range(1, levels + 1):
+            bid_price = max(spot - i * step, 0.01)
+            ask_price = spot + i * step
+            cumulative += 5000.0 / levels
+            scaled = round(cumulative / 1e3, 2)
+            bids.append({"price": round(bid_price, 6), "cumulative_token0": scaled, "liquidity_usd": scaled})
+            asks.append({"price": round(ask_price, 6), "cumulative_token0": scaled, "liquidity_usd": scaled})
+        return {"success": True, "data": {"spot_price": spot, "bids": bids, "asks": asks}, "mock": True, "error": str(e)}
 
 
 @router.get("/transactions")
@@ -306,7 +389,13 @@ async def get_transactions(
             ],
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return empty transactions on database error
+        return {
+            "success": True,
+            "data": [],
+            "mock": True,
+            "error": str(e),
+        }
 
 
 @router.post("/add-liquidity", dependencies=[Depends(check_system_not_paused)])
