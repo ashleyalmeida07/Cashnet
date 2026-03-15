@@ -34,7 +34,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     setState(() => _isLoading = true);
 
     try {
-      final url = '${AuthService.apiBaseUrl}/api/admin/dashboard';
+      const url = '${AuthService.apiBaseUrl}/api/admin/dashboard';
       print('📡 API CALL: GET $url');
 
       final response = await http

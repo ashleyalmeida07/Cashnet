@@ -28,18 +28,33 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS
+# Configure CORS - IMPORTANT: List all frontend origins here
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://cash-net-cn.vercel.app",
         "https://cashnet-mu.vercel.app",
         "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
+
+# Health check endpoint
+@app.get("/health")
+async def health():
+    """Health check endpoint - useful for verifying CORS"""
+    return {"status": "ok", "message": "Backend is running"}
+
+@app.options("/{full_path:path}")
+async def preflight():
+    """Handle CORS preflight requests"""
+    return {"status": "ok"}
 
 # Include routers
 app.include_router(auth.router)          # Firebase/Google SSO → /auth/*

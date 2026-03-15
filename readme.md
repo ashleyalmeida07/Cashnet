@@ -102,7 +102,9 @@ Agents react to **live market data** (BTC/ETH/SOL) from CoinDesk API.
 # Backend
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload
+cd scripts
+.\start.bat
+
 
 # Frontend
 cd frontend
