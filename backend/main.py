@@ -60,138 +60,26 @@ app.include_router(market_intel_router)   # Market Intelligence → /api/market-
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize services on startup"""
-    from logging_utils import log_info, log_success, log_error
-    from models import LogCategoryEnum
-    
-    print("🚀 Starting Rust-eze Simulation Lab Backend...")
-    
-    # Initialize database
-    try:
-        init_db()
-        print("✅ Database initialized successfully")
-        log_success(
-            LogCategoryEnum.DATABASE,
-            "Database",
-            "Database initialized successfully and connection pool created"
-        )
-    except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
-        log_error(
-            LogCategoryEnum.DATABASE,
-            "Database",
-            f"Database initialization failed: {str(e)}"
-        )
-    
-    # Check blockchain connection
-    try:
-        if blockchain_service.is_connected():
-            block_number = blockchain_service.get_block_number()
-            print(f"✅ Connected to Sepolia testnet (Block: {block_number})")
-            log_success(
-                LogCategoryEnum.SYSTEM,
-                "Blockchain",
-                f"Connected to Sepolia testnet at block {block_number}",
-                metadata={"network": "sepolia", "block_number": block_number}
-            )
-        else:
-            print("⚠️  Blockchain connection failed")
-            log_error(
-                LogCategoryEnum.SYSTEM,
-                "Blockchain",
-                "Blockchain connection failed"
-            )
-    except Exception as e:
-        print(f"⚠️  Blockchain connection error: {e}")
-        log_error(
-            LogCategoryEnum.SYSTEM,
-            "Blockchain",
-            f"Blockchain connection error: {str(e)}"
-        )
-    
-    # Log server startup
-    log_success(
-        LogCategoryEnum.SYSTEM,
-        "Backend API",
-        f"Server started successfully on port {settings.api_port}",
-        metadata={"port": settings.api_port, "env": "production"}
-    )
-    
-    # Pre-warm Firebase public-key certificate cache so first login is fast
-    try:
-        import urllib.request as _ureq
-        _ureq.urlopen(
-            "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
-            timeout=4,
-        )
-        print("✅ Firebase cert cache pre-warmed")
-        log_info(
-            LogCategoryEnum.AUTH,
-            "Firebase",
-            "Firebase certificate cache pre-warmed"
-        )
-    except Exception as _e:
-        print(f"⚠️  Firebase cert pre-warm skipped: {_e}")
-
-    # Pre-load / train the combined ML risk model
-    try:
-        import asyncio
-        from liquidity_engine.ml_model import get_model as get_liquidity_model
-        await asyncio.get_event_loop().run_in_executor(None, get_liquidity_model)
-        print("✅ DotlocalRiskModel ready")
-        log_success(
-            LogCategoryEnum.SYSTEM,
-            "ML Model",
-            "DotlocalRiskModel initialized and ready"
-        )
-    except Exception as e:
-        print(f"⚠️  Liquidity ML model init failed: {e}")
-
-    # Pre-load / train the agent intelligence ML model
-    try:
-        from agents.ml_model import get_model as get_agent_model
-        await asyncio.get_event_loop().run_in_executor(None, get_agent_model)
-        print("✅ DotlocalAgentIntelModel ready")
-    except Exception as e:
-        print(f"⚠️  Agent ML model init failed: {e}")
-
-    # Initialize blockchain integrator for on-chain event recording
-    try:
-        from agents.blockchain_integrator import get_blockchain_integrator
-        integrator = await get_blockchain_integrator()
-        if integrator.contracts_loaded:
-            print(f"✅ BlockchainIntegrator ready (real txs: {integrator.enable_real_txs})")
-        else:
-            print("⚠️  BlockchainIntegrator running in simulation mode")
-    except Exception as e:
-        print(f"⚠️  BlockchainIntegrator init failed: {e}")
-
-    # Verify Groq LLM connectivity
-    try:
-        from agents.groq_advisor import _get_groq_key, _get_groq_model
-        groq_key = _get_groq_key()
-        groq_model = _get_groq_model()
-        if groq_key:
-            print(f"✅ Groq LLM ready (model: {groq_model}, key: ...{groq_key[-8:]})")
-        else:
-            print("⚠️  Groq API key not configured — agent AI decisions disabled")
-    except Exception as e:
-        print(f"⚠️  Groq init check failed: {e}")
-
-    print(f"🌐 API running at http://{settings.api_host}:{settings.api_port}")
-    print(f"📚 Docs available at http://{settings.api_host}:{settings.api_port}/docs")
+    """Minimal startup for Vercel serverless"""
+    print("🚀 CashNet Backend started")
+    # Heavy initialization is done lazily on first request
+    # Avoid timeouts on cold starts
 
 
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "Rust-eze Simulation Lab API",
+        "name": "CashNet Backend API",
         "version": "1.0.0",
-        "status": "operational",
-        "blockchain_connected": blockchain_service.is_connected(),
-        "endpoints": {
-            "docs": "/docs",
+        "status": "operational"
+    }
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint"""
+    return {"status": "ok"}
             "participants": "/participants",
             "pool": "/pool",
             "lending": "/lending",
@@ -209,20 +97,6 @@ async def health_check():
         blockchain_connected = blockchain_service.is_connected()
         block_number = blockchain_service.get_block_number() if blockchain_connected else None
         
-        return {
-            "status": "healthy",
-            "blockchain": {
-                "connected": blockchain_connected,
-                "network": "Sepolia",
-                "block_number": block_number
-            },
-            "database": "connected"
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
 
 
 @app.get("/contracts")
