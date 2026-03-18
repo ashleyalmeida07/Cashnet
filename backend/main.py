@@ -67,57 +67,26 @@ async def startup_event():
 
 
 @app.get("/")
+@app.get("/health")
+async def health():
+    """Health check endpoint"""
+    return {"status": "ok"}
+
+
+@app.get("/")
 async def root():
-    """Root endpoint with API information"""
+    """Root endpoint"""
+    load_routers()
     return {
-        "name": "CashNet Backend API",
+        "name": "CashNet Backend",
         "version": "1.0.0",
         "status": "operational"
     }
 
 
-@app.get("/health")
-async def health():
-    """Health check endpoint"""
-    return {"status": "ok"}
-            "participants": "/participants",
-            "pool": "/pool",
-            "lending": "/lending",
-            "alerts": "/alerts",
-            "simulations": "/simulations",
-            "agents_simulation": "/agents-sim"
-        }
-    }
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    try:
-        blockchain_connected = blockchain_service.is_connected()
-        block_number = blockchain_service.get_block_number() if blockchain_connected else None
-        
-
-
-@app.get("/contracts")
-async def get_contract_addresses():
-    """Get all deployed contract addresses"""
-    return {
-        "network": "Sepolia",
-        "contracts": {
-            "AccessControl": settings.access_control_address,
-            "IdentityRegistry": settings.identity_registry_address,
-            "CreditRegistry": settings.credit_registry_address,
-            "CollateralVault": settings.collateral_vault_address,
-            "LendingPool": settings.lending_pool_address,
-            "LiquidityPool": settings.liquidity_pool_address,
-            "Palladium (PLDM)": settings.palladium_address,
-            "Badassium (BADM)": settings.badassium_address
-        }
-    }
-
-
 if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
     import uvicorn
     # Disable reload to avoid Windows multiprocessing errors with Python 3.13
     uvicorn.run(
